@@ -19,7 +19,7 @@ Once `setup.py` completes the ds3_python3_sdk should be installed and available 
 
 Documentation
 -------------
-The documentation for the SDK can be found at [http://spectralogic.github.io/ds3_python3_sdk/sphinx/v3.0.0-beta/](http://spectralogic.github.io/ds3_python3_sdk/sphinx/v3.0.0-beta/)
+The documentation for the SDK can be found at [http://spectralogic.github.io/ds3_python3_sdk/sphinx/v3.4.1/](http://spectralogic.github.io/ds3_python3_sdk/sphinx/v3.4.1/)
 
 SDK
 ---
