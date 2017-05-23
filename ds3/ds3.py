@@ -3066,13 +3066,13 @@ class DeleteAzureDataReplicationRuleSpectraS3Request(AbstractRequest):
 
 class DeleteDataPersistenceRuleSpectraS3Request(AbstractRequest):
   
-  def __init__(self, data_persistence_rule):
+  def __init__(self, data_persistence_rule_id):
     super(DeleteDataPersistenceRuleSpectraS3Request, self).__init__()
-    self.data_persistence_rule = data_persistence_rule
+    self.data_persistence_rule_id = data_persistence_rule_id
 
 
 
-    self.path = '/_rest_/data_persistence_rule/' + data_persistence_rule
+    self.path = '/_rest_/data_persistence_rule/' + data_persistence_rule_id
     self.http_verb = HttpVerb.DELETE
 
 class DeleteDataPolicySpectraS3Request(AbstractRequest):
@@ -3149,13 +3149,13 @@ class GetAzureDataReplicationRulesSpectraS3Request(AbstractRequest):
 
 class GetDataPersistenceRuleSpectraS3Request(AbstractRequest):
   
-  def __init__(self, data_persistence_rule):
+  def __init__(self, data_persistence_rule_id):
     super(GetDataPersistenceRuleSpectraS3Request, self).__init__()
-    self.data_persistence_rule = data_persistence_rule
+    self.data_persistence_rule_id = data_persistence_rule_id
 
 
 
-    self.path = '/_rest_/data_persistence_rule/' + data_persistence_rule
+    self.path = '/_rest_/data_persistence_rule/' + data_persistence_rule_id
     self.http_verb = HttpVerb.GET
 
 class GetDataPersistenceRulesSpectraS3Request(AbstractRequest):
@@ -3324,9 +3324,9 @@ class ModifyAzureDataReplicationRuleSpectraS3Request(AbstractRequest):
 
 class ModifyDataPersistenceRuleSpectraS3Request(AbstractRequest):
   
-  def __init__(self, data_persistence_rule, isolation_level=None, minimum_days_to_retain=None, type=None):
+  def __init__(self, data_persistence_rule_id, isolation_level=None, minimum_days_to_retain=None, type=None):
     super(ModifyDataPersistenceRuleSpectraS3Request, self).__init__()
-    self.data_persistence_rule = data_persistence_rule
+    self.data_persistence_rule_id = data_persistence_rule_id
 
 
     if isolation_level is not None:
@@ -3336,7 +3336,7 @@ class ModifyDataPersistenceRuleSpectraS3Request(AbstractRequest):
     if type is not None:
       self.query_params['type'] = type
 
-    self.path = '/_rest_/data_persistence_rule/' + data_persistence_rule
+    self.path = '/_rest_/data_persistence_rule/' + data_persistence_rule_id
     self.http_verb = HttpVerb.PUT
 
 class ModifyDataPolicySpectraS3Request(AbstractRequest):
