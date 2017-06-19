@@ -312,7 +312,7 @@ class NetworkConnection(object):
     if not endpoint.startswith('http'):
       return endpoint
     index = endpoint.find('://')
-    if endpoint >= 0:
+    if index >= 0:
       return endpoint[index+3:]
     return endpoint
         
