@@ -16,9 +16,9 @@ else
   git clone ${GIT_REPO}
 fi
 
-cd ds3_python_sdk
+cd ds3_python3_sdk
 get rev-parse HEAD
-python setup.py install
+python3 setup.py install
 
 cd tests
-python -m unittest clientTests
+python3 -m unittest clientTests
