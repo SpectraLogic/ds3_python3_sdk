@@ -9,8 +9,6 @@
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 
-import os
-import stat
 import sys
 import tempfile
 import unittest
@@ -22,14 +20,17 @@ resources = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "ul
 bigFile = "lesmis.txt";
 unicodeResources = [str(filename) for filename in resources]
 
+
 def pathForResource(resourceName):
     return pathForFileName(resourceName, "resources")
-    
+
+
 def pathForFileName(resourceName, fileName):
     encoding = sys.getfilesystemencoding()
     # currentPath = os.path.dirname(str(__file__, encoding))
     currentPath = os.path.dirname(__file__)
     return os.path.join(currentPath, fileName, resourceName)
+
 
 def populateTestData(client, bucketName, dataPolicyId, resourceList = None, prefix = "", metadata = None, createBucket=True):
     if not resourceList:
@@ -61,6 +62,7 @@ def populateTestData(client, bucketName, dataPolicyId, resourceList = None, pref
             
     return fileList
 
+
 def clearBucket(client, bucketName):
     bucketContents = client.get_bucket(GetBucketRequest(bucketName))
     if bucketContents.response.status == 404:
@@ -70,15 +72,19 @@ def clearBucket(client, bucketName):
         client.delete_object(DeleteObjectRequest(bucketName, obj['Key']))
     client.delete_bucket(DeleteBucketRequest(bucketName))
 
+
 def statusCodeList(status):
     return [RequestFailed, lambda obj: obj.http_error_code, status]
+
 
 def typeErrorList(badType):
     return [RequestFailed, str, "expected instance of type basestring, got instance of type " + type(badType).__name__]
 
+
 def reasonErrorList(reason):
     return [RequestFailed, str, reason]
-    
+
+
 def setupStorageDomainMember(client, storageDomainName, poolPartitionName):
     '''Creates a storage domain, pool partition, and links the two via a storage domain member'''
     storageResponse = client.put_storage_domain_spectra_s3(
@@ -92,7 +98,8 @@ def setupStorageDomainMember(client, storageDomainName, poolPartitionName):
     ids["PoolId"] = poolResponse.result['Id']
     ids["MemberId"] = memberResponse.result['Id']
     return ids
-    
+
+
 def teardownStorageDomainMember(client, ids):
     '''Deletes the storage domain member, the storage domain, and the pool partition'''
     client.delete_storage_domain_member_spectra_s3(
@@ -103,6 +110,7 @@ def teardownStorageDomainMember(client, ids):
     
     client.delete_storage_domain_spectra_s3(
                 DeleteStorageDomainSpectraS3Request(ids["StorageId"]))
+
 
 def setupTestEnvironment(client):
     # Set up test storage domain
@@ -123,7 +131,8 @@ def setupTestEnvironment(client):
     
     ids['PersistenceRuleId'] = persistenceRuleResponse.result['Id']
     return ids
-    
+
+
 def teardownTestEnvironment(client, ids):
     # Delete data persistence rule
     client.delete_data_persistence_rule_spectra_s3(
@@ -134,7 +143,8 @@ def teardownTestEnvironment(client, ids):
     
     # Tear down test storage domain
     teardownStorageDomainMember(client, ids)
-    
+
+
 class Ds3TestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(Ds3TestCase, self).__init__(*args, **kwargs)
@@ -163,7 +173,8 @@ class Ds3TestCase(unittest.TestCase):
     
     def createBucket(self, myBucketName):
         self.client.put_bucket_spectra_s3(PutBucketSpectraS3Request(myBucketName, data_policy_id=self.getDataPolicyId()))
-                    
+
+
 class BucketTestCase(Ds3TestCase):
     def testPutBucket(self):
         """tests putBucket"""
@@ -344,6 +355,7 @@ class BucketTestCase(Ds3TestCase):
         badBuckets = {HeadBucketRequest(""): statusCodeList(400), HeadBucketRequest("not-here"): statusCodeList(404)}
         self.checkBadInputs(self.client.head_bucket, badBuckets)
 
+
 class JobTestCase(Ds3TestCase):
     def testGetJobs(self):
         populateTestData(self.client, bucketName, self.getDataPolicyId())
@@ -362,6 +374,7 @@ class JobTestCase(Ds3TestCase):
         jobsAfter = self.client.get_jobs_spectra_s3(GetJobsSpectraS3Request())
         result = [obj['JobId'] for obj in jobsAfter.result['JobList']]
         self.assertFalse(bulkId in result)
+
 
 class ObjectTestCase(Ds3TestCase):
     def validateSearchObjects(self, objects, resourceList = resources, objType = "DATA"):
@@ -562,11 +575,10 @@ class ObjectTestCase(Ds3TestCase):
     def testGetObjects(self):
         populateTestData(self.client, bucketName, self.getDataPolicyId())
 
-        response = self.client.get_objects_details_spectra_s3(GetObjectsDetailsSpectraS3Request())
+        response = self.client.get_objects_details_spectra_s3(GetObjectsDetailsSpectraS3Request(bucket_id=bucketName))
         objects = response.result['S3ObjectList']
-        
-        # Note that there may be additional objects on the BP
-        self.assertTrue(len(objects) >= len(resources))
+
+        self.assertTrue(len(objects) == len(resources))
         testObjects = []
         for obj in objects:
             if obj['Name'] in resources:
@@ -665,7 +677,8 @@ class ObjectTestCase(Ds3TestCase):
         response = self.client.get_objects_with_full_details_spectra_s3(request)
         
         self.assertEqual(len(response.result['ObjectList']), 4)
-    
+
+
 class ObjectMetadataTestCase(Ds3TestCase):
     def testHeadObject(self):
         """tests headObject"""
@@ -719,7 +732,8 @@ class ObjectMetadataTestCase(Ds3TestCase):
 
         self.assertEqual(metadata, metadata_resp.meta_data)
         #self.assertEqual(jobStatusResponse.status, LibDs3JobStatus.COMPLETED)
-        
+
+
 class BasicClientTestCase(Ds3TestCase):
     def testGetSystemInformation(self):
         result = self.client.get_system_information_spectra_s3(GetSystemInformationSpectraS3Request())
@@ -730,6 +744,7 @@ class BasicClientTestCase(Ds3TestCase):
     def testVerifySystemHealth(self):
         result = self.client.verify_system_health_spectra_s3(VerifySystemHealthSpectraS3Request())
         self.assertTrue(int(result.result['MsRequiredToVerifyDataPlannerHealth']) >= 0)
+
 
 class ParserTestCase(unittest.TestCase):
     def testGetServiceParsing(self):
@@ -744,7 +759,8 @@ class ParserTestCase(unittest.TestCase):
         result = parseModel(xmldom.fromstring(responsePayload), ListAllMyBucketsResult())
         self.assertTrue(result['Owner'] is not None)
         self.assertEqual(len(result['BucketList']), 5)
-        
+
+
 class ABMTestCase(Ds3TestCase):
     def testPutDeleteDataPolicy(self):
         name = "test_put_delete_data_policy"
@@ -957,7 +973,8 @@ class ABMTestCase(Ds3TestCase):
                     DeleteDataPolicySpectraS3Request(policyName))
         
         teardownStorageDomainMember(self.client, ids)
-    
+
+
 class SpecialCharacterTestCase(Ds3TestCase):
     def testObjectNameWithSpace(self):
         objectName = "beowulf with spaces.txt"
@@ -1033,7 +1050,8 @@ class SpecialCharacterTestCase(Ds3TestCase):
         f.close()
         os.close(fd)
         os.remove(tempName)
-        
+
+
 class GroupManagementTestCase(Ds3TestCase):
     def testCreateDeleteGroup(self):
         groupName = "create_delete_group"
@@ -1143,7 +1161,8 @@ class GroupManagementTestCase(Ds3TestCase):
         # Cleanup
         deleteGroup = self.client.delete_group_spectra_s3(DeleteGroupSpectraS3Request(groupName))
         self.assertEqual(deleteGroup.response.status, 204)
-        
+
+
 class NotificationsTestCase(Ds3TestCase):
     def testObjectCompletionRegistration(self):
         response = self.client.put_object_cached_notification_registration_spectra_s3(
@@ -1278,7 +1297,8 @@ class NotificationsTestCase(Ds3TestCase):
         deleteResponse = self.client.delete_object_persisted_notification_registration_spectra_s3(
                     DeleteObjectPersistedNotificationRegistrationSpectraS3Request(registrationId))
         self.assertEqual(deleteResponse.response.status, 204)
-        
+
+
 class MetadataTestCase(Ds3TestCase):
     def testPutObjectRequestWithMetadata(self):
         metadata = {"name1":"value1", "name2":"", "name3":None}
@@ -1290,7 +1310,8 @@ class MetadataTestCase(Ds3TestCase):
         self.assertEqual(expected_metadata, request.headers)
         
         os.close(fd)
-        
+
+
 class GetBigObjectTestCase(Ds3TestCase):
     def testGetBigFile(self):
         self.createBucket(bucketName)
