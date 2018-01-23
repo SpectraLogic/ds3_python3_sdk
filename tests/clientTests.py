@@ -17,7 +17,7 @@ from ds3.ds3 import *
 
 bucketName = "python_test_bucket"
 resources = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "ulysses.txt"]
-bigFile = "lesmis.txt";
+bigFile = "lesmis.txt"
 unicodeResources = [str(filename) for filename in resources]
 
 
@@ -1356,3 +1356,38 @@ class Ds3NetworkTestCase(Ds3TestCase):
         result = self.client.net_client.build_path("/test/path/" + obj_name)
 
         self.assertEqual(result, expected)
+
+
+class MockedHttpResponse:
+    def __init__(self, status, content="", headers=[]):
+        self.status = status
+        self.headers = headers
+        self.content = content
+
+    def getheaders(self):
+        return self.headers
+
+    def read(self):
+        return self.content
+
+
+class ResponseParsingTestCase(unittest.TestCase):
+    def testGetJobToReplicate(self):
+        content = "some content to test response parsing"
+
+        request = GetJobToReplicateSpectraS3Request("jobId")
+
+        mocked_response = MockedHttpResponse(200, content)
+
+        response = GetJobToReplicateSpectraS3Response(mocked_response, request)
+        self.assertEqual(response.result, content)
+
+    def testGetBlobPersistence(self):
+        content = "some content to test response parsing"
+
+        mocked_request = GetBlobPersistenceSpectraS3Request("request payload")
+
+        mocked_response = MockedHttpResponse(200, content)
+
+        response = GetBlobPersistenceSpectraS3Response(mocked_response, mocked_request)
+        self.assertEqual(response.result, content)
