@@ -13,9 +13,6 @@ import sys
 import tempfile
 import unittest
 
-from http.client import HTTPResponse
-from unittest.mock import Mock
-
 from ds3.ds3 import *
 
 bucketName = "python_test_bucket"
@@ -1360,29 +1357,37 @@ class Ds3NetworkTestCase(Ds3TestCase):
 
         self.assertEqual(result, expected)
 
+
+class MockedHttpResponse:
+    def __init__(self, status, content="", headers=[]):
+        self.status = status
+        self.headers = headers
+        self.content = content
+
+    def getheaders(self):
+        return self.headers
+
+    def read(self):
+        return self.content
+
+
 class ResponseParsingTestCase(unittest.TestCase):
     def testGetJobToReplicate(self):
         content = "some content to test response parsing"
 
-        mocked_request = Mock(spec=GetJobToReplicateSpectraS3Request)
+        request = GetJobToReplicateSpectraS3Request("jobId")
 
-        mocked_response = Mock(spec=HTTPResponse)
-        mocked_response.status = 200
-        mocked_response.getheaders = Mock(return_value=[])
-        mocked_response.read = Mock(return_value=content)
+        mocked_response = MockedHttpResponse(200, content)
 
-        response = GetJobToReplicateSpectraS3Response(mocked_response, mocked_request)
+        response = GetJobToReplicateSpectraS3Response(mocked_response, request)
         self.assertEqual(response.result, content)
 
     def testGetBlobPersistence(self):
         content = "some content to test response parsing"
 
-        mocked_request = Mock(spec=GetBlobPersistenceSpectraS3Request)
+        mocked_request = GetBlobPersistenceSpectraS3Request("request payload")
 
-        mocked_response = Mock(spec=HTTPResponse)
-        mocked_response.status = 200
-        mocked_response.getheaders = Mock(return_value=[])
-        mocked_response.read = Mock(return_value=content)
+        mocked_response = MockedHttpResponse(200, content)
 
         response = GetBlobPersistenceSpectraS3Response(mocked_response, mocked_request)
         self.assertEqual(response.result, content)
