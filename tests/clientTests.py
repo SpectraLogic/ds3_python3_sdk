@@ -13,11 +13,14 @@ import sys
 import tempfile
 import unittest
 
+from http.client import HTTPResponse
+from unittest.mock import Mock
+
 from ds3.ds3 import *
 
 bucketName = "python_test_bucket"
 resources = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "ulysses.txt"]
-bigFile = "lesmis.txt";
+bigFile = "lesmis.txt"
 unicodeResources = [str(filename) for filename in resources]
 
 
@@ -1356,3 +1359,30 @@ class Ds3NetworkTestCase(Ds3TestCase):
         result = self.client.net_client.build_path("/test/path/" + obj_name)
 
         self.assertEqual(result, expected)
+
+class ResponseParsingTestCase(unittest.TestCase):
+    def testGetJobToReplicate(self):
+        content = "some content to test response parsing"
+
+        mocked_request = Mock(spec=GetJobToReplicateSpectraS3Request)
+
+        mocked_response = Mock(spec=HTTPResponse)
+        mocked_response.status = 200
+        mocked_response.getheaders = Mock(return_value=[])
+        mocked_response.read = Mock(return_value=content)
+
+        response = GetJobToReplicateSpectraS3Response(mocked_response, mocked_request)
+        self.assertEqual(response.result, content)
+
+    def testGetBlobPersistence(self):
+        content = "some content to test response parsing"
+
+        mocked_request = Mock(spec=GetBlobPersistenceSpectraS3Request)
+
+        mocked_response = Mock(spec=HTTPResponse)
+        mocked_response.status = 200
+        mocked_response.getheaders = Mock(return_value=[])
+        mocked_response.read = Mock(return_value=content)
+
+        response = GetBlobPersistenceSpectraS3Response(mocked_response, mocked_request)
+        self.assertEqual(response.result, content)

@@ -8937,7 +8937,7 @@ class GetJobToReplicateSpectraS3Response(AbstractResponse):
     def process_response(self, response):
         self.__check_status_codes__([200])
         if self.response.status == 200:
-            self.result = parseModel(xmldom.fromstring(response.read()), String())
+            self.result = response.read()
 
 
 class GetJobsSpectraS3Response(AbstractResponse):
@@ -9567,7 +9567,7 @@ class GetBlobPersistenceSpectraS3Response(AbstractResponse):
     def process_response(self, response):
         self.__check_status_codes__([200])
         if self.response.status == 200:
-            self.result = parseModel(xmldom.fromstring(response.read()), String())
+            self.result = response.read()
 
 
 class GetObjectDetailsSpectraS3Response(AbstractResponse):
