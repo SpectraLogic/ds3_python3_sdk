@@ -22,7 +22,7 @@ fileList = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "uly
 
 bucketContents = client.get_bucket(ds3.GetBucketRequest(bucketName))
 
-objectList = ds3.FileObjectList([ds3.FileObject(obj['Key']) for obj in bucketContents.result['ContentsList']])
+objectList = list([ds3.Ds3GetObject(obj['Key']) for obj in bucketContents.result['ContentsList']])
 bulkGetResult = client.get_bulk_job_spectra_s3(ds3.GetBulkJobSpectraS3Request(bucketName, objectList))
 
 # create a set of the chunk ids which will be used to track
