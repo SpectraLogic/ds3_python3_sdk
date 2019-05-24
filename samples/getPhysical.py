@@ -16,12 +16,14 @@ from ds3 import ds3
 
 client = ds3.createClientFromEnv()
 
-bucketName = "sdkexamples"
-objectName = "123456795.txt"
+# this example assumes that a bucket named "books" and the following object exists on the server
+# note: these are the same objects that are on the server if you run the bulk put example and comment out the delete lines
+bucketName = "books"
+fileList = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "ulysses.txt"]
 
-objlist = ds3.FileObjectList([ds3.FileObject(objectName)]) 
+objectList = list([ds3.Ds3GetObject(name=fileName) for fileName in fileList])
 tapes = client.get_physical_placement_for_objects_spectra_s3(
-               ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucketName, objlist))
+               ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucketName, objectList))
 
 for tape in tapes.result['TapeList']:
     print(tape)

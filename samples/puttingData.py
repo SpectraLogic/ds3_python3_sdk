@@ -26,23 +26,21 @@ client.put_bucket(ds3.PutBucketRequest(bucketName))
 
 fileList = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "ulysses.txt"]
 
-# this method is used to get the size of the files
-def getSize(fileName, prefix=""):
-    size = os.stat(pathForResource(fileName)).st_size
-    return ds3.FileObject(prefix + fileName, size)
+# this method is used to map a file path to a Ds3PutObject
+def fileNameToDs3PutObject(filePath, prefix=""):
+    size = os.stat(pathForResource(filePath)).st_size
+    return ds3.Ds3PutObject(prefix + filePath, size)
     
 # this method is used to get the os specific path for an object located in the resources folder
 def pathForResource(resourceName):
-    encoding = sys.getfilesystemencoding()
-    currentPath = os.path.dirname(str(__file__, encoding))
+    currentPath = os.path.dirname(str(__file__))
     return os.path.join(currentPath, "resources", resourceName)
 
 # get the sizes for each file
-fileList = list(map(getSize, fileList))
-fileObjectList = ds3.FileObjectList(fileList)
+fileList = list(map(fileNameToDs3PutObject, fileList))
 
 # submit the put bulk request to DS3
-bulkResult = client.put_bulk_job_spectra_s3(ds3.PutBulkJobSpectraS3Request(bucketName, fileObjectList))
+bulkResult = client.put_bulk_job_spectra_s3(ds3.PutBulkJobSpectraS3Request(bucketName, fileList))
 
 # the bulk request will split the files over several chunks if it needs to.
 # we then need to ask what chunks we can send, and then send them making
@@ -80,6 +78,7 @@ while len(chunkIds) > 0:
             if obj['InCache'] == 'false':
                 localFileName = "resources/" + obj['Name']
                 objectDataStream = open(localFileName, "rb")
+                objectDataStream.seek(int(obj['Offset']), 0)
                 client.put_object(ds3.PutObjectRequest(bucketName, 
                                                        obj['Name'], 
                                                        obj['Length'],
