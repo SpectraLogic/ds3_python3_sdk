@@ -23,10 +23,6 @@ prefix = None
 if len(sys.argv) > 2:
     prefix = sys.argv[2]
 
-# create a dictionary to contain object names
-object_dict={}
-object_dict[bucket]=[]
-
 # get_bucket returns max 1000 objects -- use pagination to get more
 getMore = True
 marker = None
@@ -41,10 +37,7 @@ while getMore:
     getMore = resp.result["IsTruncated"] == 'true'
     marker = resp.result["NextMarker"]
 
-    # extract what is wanted from get_bucket response; key is object name
-    objectNames = [bucket['Key'] for bucket in resp.result['ContentsList']]
-    for name in objectNames:
-        object_dict[bucket].append(name)
+    # extract and print what is wanted from get_bucket response; key is object name
+    for contents in resp.result["ContentsList"]:
+        print(contents['Key'])
 
-# print object list in JSON
-print(object_dict)
