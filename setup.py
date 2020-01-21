@@ -14,7 +14,7 @@
 from distutils.core import setup
 
 setup(name='DS3 SDK',
-    version='4.1.0',
+    version='5.0.3',
     description='Python3 SDK and CLI for Spectra S3',
     author_email='developer@spectralogic.com',
     packages=['ds3'])
