@@ -17,8 +17,7 @@ from ds3 import ds3
 client = ds3.createClientFromEnv()
 
 bucketName = "books"
-# this example assumes that a bucket named "books" and the following objects exist on the server (these are the same objects as are on the server if they are not deleted at the end of the bulk put example)
-fileList = ["beowulf.txt", "sherlock_holmes.txt", "tale_of_two_cities.txt", "ulysses.txt"]
+# this example assumes that a bucket named "books" containing some objects exist on the server 
 
 bucketContents = client.get_bucket(ds3.GetBucketRequest(bucketName))
 
