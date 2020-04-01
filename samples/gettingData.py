@@ -11,6 +11,7 @@
 
 import os
 import tempfile
+import time
 
 from ds3 import ds3
 
@@ -30,13 +31,13 @@ chunkIds = set([x['ChunkId'] for x in bulkGetResult.result['ObjectsList']])
 
 # create a dictionary to map our retrieved objects to temporary files
 # if you want to keep the retreived files on disk, this is not necessary
-tempFiles={}
+tempFiles = {}
 
 # while we still have chunks to retrieve
 while len(chunkIds) > 0:
     # get a list of the available chunks that we can get
     availableChunks = client.get_job_chunks_ready_for_client_processing_spectra_s3(
-                             ds3.GetJobChunksReadyForClientProcessingSpectraS3Request(bulkGetResult.result['JobId']))
+        ds3.GetJobChunksReadyForClientProcessingSpectraS3Request(bulkGetResult.result['JobId']))
 
     chunks = availableChunks.result['ObjectsList']
 
@@ -55,15 +56,15 @@ while len(chunkIds) > 0:
         for obj in chunk['ObjectList']:
             # if we haven't create a temporary file for this object yet, create one
             if obj['Name'] not in list(tempFiles.keys()):
-                tempFiles[obj['Name']]=tempfile.mkstemp()
-    
-        # get the object
-        objectStream = open(tempFiles[obj['Name']][1], "wb")
-        client.get_object(ds3.GetObjectRequest(bucketName, 
-                                               obj['Name'],
-                                               objectStream,                                               
-                                               offset = int(obj['Offset']), 
-                                               job = bulkGetResult.result['JobId']))
+                tempFiles[obj['Name']] = tempfile.mkstemp()
+
+            # get the object
+            objectStream = open(tempFiles[obj['Name']][1], "wb")
+            client.get_object(ds3.GetObjectRequest(bucketName,
+                                                   obj['Name'],
+                                                   objectStream,
+                                                   offset=int(obj['Offset']),
+                                                   job=bulkGetResult.result['JobId']))
 
 # iterate over the temporary files, printing out their names, then closing and and removing them
 for objName in list(tempFiles.keys()):
