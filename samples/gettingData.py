@@ -106,6 +106,6 @@ for objName in objectNameToDestinationPathMap.keys():
 
         # This removes the retrieved file from the destination.
         # This is done to clean up the script for when people are using it to test connection only.
-        os.remove(objectNameToDestinationPathMap[objName][1])  # Remove in production code.
+        os.remove(destinationPath)  # Remove in production code.
     else:
         print(f'Failed to retrieve object={objName}')
