@@ -40,26 +40,26 @@ for bucket in getServiceResponse.result['BucketList']:
     print bucket['Name']
 ```
 
-Ds3Client
+Client
 ---------
-In the ds3_python3_sdk there are two ways that you can create a `Ds3Client` instance: environment variables, or manually.  `ds3.createClientFromEnv` will create a `Ds3Client` using the following environment variables:
+In the ds3_python3_sdk there are two ways that you can create a `Client` instance: environment variables, or manually.  `ds3.createClientFromEnv` will create a `Client` using the following environment variables:
 
 * `DS3_ENDPOINT` - The URL to the DS3 Endpoint
 * `DS3_ACCESS_KEY` - The DS3 access key
 * `DS3_SECRET_KEY` - The DS3 secret key
-* `http_proxy` - If set, the `Ds3Client` instance will proxy through this URL
+* `http_proxy` - If set, the `Client` instance will proxy through this URL
 
-The `Ds3Client` instance can also be created manually in code with:
+The `Client` instance can also be created manually in code with:
 
 ```python
 
 from ds3 import ds3
 
-client = ds3.Ds3Client("endpoint", ds3.Credentials("access_key", "secret_key"))
+client = ds3.Client("endpoint", ds3.Credentials("access_key", "secret_key"))
 
 ```
 
-The proxy URL can be passed in as the named parameter `proxy` to `Ds3Client()`.
+The proxy URL can be passed in as the named parameter `proxy` to `Client()`.
 
 Putting Data
 ------------
