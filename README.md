@@ -13,7 +13,7 @@ Join us at our [Google Groups](https://groups.google.com/d/forum/spectralogicds3
 Installing
 ----------
 
-To install the ds3_python3_sdk, either clone the latest code, or download a release bundle from [Releases](http://github.com/SpectraLogic/ds3_python3_sdk/releases).  Once the code has been download, cd into the bundle, and install it with `sudo python setup.py install`
+To install the ds3_python3_sdk, either clone the latest code, or download a release bundle from [Releases](http://github.com/SpectraLogic/ds3_python3_sdk/releases).  Once the code has been download, cd into the bundle, and install it with `sudo python3 setup.py install`
 
 Once `setup.py` completes the ds3_python3_sdk should be installed and available to be imported into python scripts.
 
