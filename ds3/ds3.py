@@ -663,6 +663,42 @@ class AzureTargetFailureNotificationRegistration(object):
         self.element_lists = {}
 
 
+class BucketChangesNotificationRegistration(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'BucketId': None,
+            'CreationDate': None,
+            'Format': None,
+            'Id': None,
+            'LastFailure': None,
+            'LastHttpResponseCode': None,
+            'LastNotification': None,
+            'LastSequenceNumber': None,
+            'NamingConvention': None,
+            'NotificationEndPoint': None,
+            'NotificationHttpMethod': None,
+            'NumberOfFailuresSinceLastSuccess': None,
+            'UserId': None
+        }
+        self.element_lists = {}
+
+
+class BucketHistoryEvent(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'BucketId': None,
+            'Id': None,
+            'ObjectCreationDate': None,
+            'ObjectName': None,
+            'SequenceNumber': None,
+            'Type': None,
+            'VersionId': None
+        }
+        self.element_lists = {}
+
+
 class Ds3TargetFailureNotificationRegistration(object):
     def __init__(self):
         self.attributes = []
@@ -1063,6 +1099,7 @@ class TapeDrive(object):
             'Id': None,
             'LastCleaned': None,
             'MfgSerialNumber': None,
+            'MinimumTaskPriority': None,
             'PartitionId': None,
             'Quiesced': None,
             'ReservedTaskType': None,
@@ -1147,6 +1184,7 @@ class AzureTarget(object):
             'Id': None,
             'LastFullyVerified': None,
             'Name': None,
+            'NamingMode': None,
             'PermitGoingOutOfSync': None,
             'Quiesced': None,
             'State': None
@@ -1253,6 +1291,7 @@ class S3Target(object):
             'Id': None,
             'LastFullyVerified': None,
             'Name': None,
+            'NamingMode': None,
             'OfflineDataStagingWindowInTb': None,
             'PermitGoingOutOfSync': None,
             'ProxyDomain': None,
@@ -1262,6 +1301,7 @@ class S3Target(object):
             'ProxyUsername': None,
             'Quiesced': None,
             'Region': None,
+            'RestrictedAccess': None,
             'SecretKey': None,
             'StagedDataExpirationInDays': None,
             'State': None
@@ -2042,6 +2082,24 @@ class AzureTargetFailureNotificationRegistrationList(object):
         }
 
 
+class BucketChangesNotificationRegistrationList(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {}
+        self.element_lists = {
+            ('BucketChangesNotificationRegistration', None, BucketChangesNotificationRegistration())
+        }
+
+
+class BucketHistoryEventList(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {}
+        self.element_lists = {
+            ('BucketHistoryEvent', None, BucketHistoryEvent())
+        }
+
+
 class Ds3TargetFailureNotificationRegistrationList(object):
     def __init__(self):
         self.attributes = []
@@ -2505,6 +2563,20 @@ class AbortMultiPartUploadRequest(AbstractRequest):
         self.http_verb = HttpVerb.DELETE
 
 
+class CompleteBlobRequest(AbstractRequest):
+    
+    def __init__(self, bucket_name, object_name, blob, job, size=None):
+        super(CompleteBlobRequest, self).__init__()
+        self.bucket_name = bucket_name
+        self.object_name = object_name
+        self.query_params['blob'] = blob
+        self.query_params['job'] = job
+        if size is not None:
+            self.query_params['size'] = size
+        self.path = '/' + bucket_name + '/' + object_name
+        self.http_verb = HttpVerb.POST
+
+
 class CompleteMultiPartUploadRequest(AbstractRequest):
     
     def __init__(self, bucket_name, object_name, part_list, upload_id):
@@ -2634,13 +2706,15 @@ class GetServiceRequest(AbstractRequest):
 
 class GetObjectRequest(AbstractRequest):
     
-    def __init__(self, bucket_name, object_name, stream, job=None, offset=None, version_id=None):
+    def __init__(self, bucket_name, object_name, stream, cached_only=None, job=None, offset=None, version_id=None):
         super(GetObjectRequest, self).__init__()
         self.bucket_name = bucket_name
         self.object_name = object_name
         self.offset = offset
         self.stream = stream
 
+        if cached_only is not None:
+            self.query_params['cached_only'] = cached_only
         if job is not None:
             self.query_params['job'] = job
         if offset is not None:
@@ -2662,10 +2736,12 @@ class HeadBucketRequest(AbstractRequest):
 
 class HeadObjectRequest(AbstractRequest):
     
-    def __init__(self, bucket_name, object_name):
+    def __init__(self, bucket_name, object_name, version_id=None):
         super(HeadObjectRequest, self).__init__()
         self.bucket_name = bucket_name
         self.object_name = object_name
+        if version_id is not None:
+            self.query_params['version_id'] = version_id
         self.path = '/' + bucket_name + '/' + object_name
         self.http_verb = HttpVerb.HEAD
 
@@ -4240,7 +4316,7 @@ class GetBulkJobSpectraS3Request(AbstractRequest):
 
 class PutBulkJobSpectraS3Request(AbstractRequest):
     
-    def __init__(self, bucket_name, object_list, aggregating=None, force=None, ignore_naming_conflicts=None, implicit_job_id_resolution=None, max_upload_size=None, minimize_spanning_across_media=None, name=None, priority=None, verify_after_write=None):
+    def __init__(self, bucket_name, object_list, aggregating=None, force=None, ignore_naming_conflicts=None, implicit_job_id_resolution=None, max_upload_size=None, minimize_spanning_across_media=None, name=None, pre_allocate_job_space=None, priority=None, verify_after_write=None):
         super(PutBulkJobSpectraS3Request, self).__init__()
         self.bucket_name = bucket_name
         self.query_params['operation'] = 'start_bulk_put'
@@ -4264,6 +4340,8 @@ class PutBulkJobSpectraS3Request(AbstractRequest):
             self.query_params['minimize_spanning_across_media'] = minimize_spanning_across_media
         if name is not None:
             self.query_params['name'] = name
+        if pre_allocate_job_space is not None:
+            self.query_params['pre_allocate_job_space'] = pre_allocate_job_space
         if priority is not None:
             self.query_params['priority'] = priority
         if verify_after_write is not None:
@@ -4653,6 +4731,23 @@ class PutAzureTargetFailureNotificationRegistrationSpectraS3Request(AbstractRequ
         self.http_verb = HttpVerb.POST
 
 
+class PutBucketChangesNotificationRegistrationSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, notification_end_point, bucket_id=None, format=None, naming_convention=None, notification_http_method=None):
+        super(PutBucketChangesNotificationRegistrationSpectraS3Request, self).__init__()
+        self.query_params['notification_end_point'] = notification_end_point
+        if bucket_id is not None:
+            self.query_params['bucket_id'] = bucket_id
+        if format is not None:
+            self.query_params['format'] = format
+        if naming_convention is not None:
+            self.query_params['naming_convention'] = naming_convention
+        if notification_http_method is not None:
+            self.query_params['notification_http_method'] = notification_http_method
+        self.path = '/_rest_/bucket_changes_notification_registration'
+        self.http_verb = HttpVerb.POST
+
+
 class PutDs3TargetFailureNotificationRegistrationSpectraS3Request(AbstractRequest):
     
     def __init__(self, notification_end_point, format=None, naming_convention=None, notification_http_method=None):
@@ -4863,6 +4958,15 @@ class DeleteAzureTargetFailureNotificationRegistrationSpectraS3Request(AbstractR
         self.http_verb = HttpVerb.DELETE
 
 
+class DeleteBucketChangesNotificationRegistrationSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, bucket_changes_notification_registration):
+        super(DeleteBucketChangesNotificationRegistrationSpectraS3Request, self).__init__()
+        self.bucket_changes_notification_registration = bucket_changes_notification_registration
+        self.path = '/_rest_/bucket_changes_notification_registration/' + bucket_changes_notification_registration
+        self.http_verb = HttpVerb.DELETE
+
+
 class DeleteDs3TargetFailureNotificationRegistrationSpectraS3Request(AbstractRequest):
     
     def __init__(self, notification_id):
@@ -5004,6 +5108,53 @@ class GetAzureTargetFailureNotificationRegistrationsSpectraS3Request(AbstractReq
         if user_id is not None:
             self.query_params['user_id'] = user_id
         self.path = '/_rest_/azure_target_failure_notification_registration'
+        self.http_verb = HttpVerb.GET
+
+
+class GetBucketChangesNotificationRegistrationSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, bucket_changes_notification_registration):
+        super(GetBucketChangesNotificationRegistrationSpectraS3Request, self).__init__()
+        self.bucket_changes_notification_registration = bucket_changes_notification_registration
+        self.path = '/_rest_/bucket_changes_notification_registration/' + bucket_changes_notification_registration
+        self.http_verb = HttpVerb.GET
+
+
+class GetBucketChangesNotificationRegistrationsSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, last_page=None, page_length=None, page_offset=None, page_start_marker=None, user_id=None):
+        super(GetBucketChangesNotificationRegistrationsSpectraS3Request, self).__init__()
+        if last_page is not None:
+            self.query_params['last_page'] = last_page
+        if page_length is not None:
+            self.query_params['page_length'] = page_length
+        if page_offset is not None:
+            self.query_params['page_offset'] = page_offset
+        if page_start_marker is not None:
+            self.query_params['page_start_marker'] = page_start_marker
+        if user_id is not None:
+            self.query_params['user_id'] = user_id
+        self.path = '/_rest_/bucket_changes_notification_registration'
+        self.http_verb = HttpVerb.GET
+
+
+class GetBucketHistorySpectraS3Request(AbstractRequest):
+    
+    def __init__(self, bucket_id=None, last_page=None, min_sequence_number=None, page_length=None, page_offset=None, page_start_marker=None):
+        super(GetBucketHistorySpectraS3Request, self).__init__()
+        if bucket_id is not None:
+            self.query_params['bucket_id'] = bucket_id
+        if last_page is not None:
+            self.query_params['last_page'] = last_page
+        if min_sequence_number is not None:
+            self.query_params['min_sequence_number'] = min_sequence_number
+        if page_length is not None:
+            self.query_params['page_length'] = page_length
+        if page_offset is not None:
+            self.query_params['page_offset'] = page_offset
+        if page_start_marker is not None:
+            self.query_params['page_start_marker'] = page_start_marker
+        self.path = '/_rest_/bucket_history'
         self.http_verb = HttpVerb.GET
 
 
@@ -6523,10 +6674,12 @@ class GetTapeDriveSpectraS3Request(AbstractRequest):
 
 class GetTapeDrivesSpectraS3Request(AbstractRequest):
     
-    def __init__(self, last_page=None, page_length=None, page_offset=None, page_start_marker=None, partition_id=None, reserved_task_type=None, serial_number=None, state=None, type=None):
+    def __init__(self, last_page=None, minimum_task_priority=None, page_length=None, page_offset=None, page_start_marker=None, partition_id=None, reserved_task_type=None, serial_number=None, state=None, type=None):
         super(GetTapeDrivesSpectraS3Request, self).__init__()
         if last_page is not None:
             self.query_params['last_page'] = last_page
+        if minimum_task_priority is not None:
+            self.query_params['minimum_task_priority'] = minimum_task_priority
         if page_length is not None:
             self.query_params['page_length'] = page_length
         if page_offset is not None:
@@ -6838,9 +6991,11 @@ class ModifyAllTapePartitionsSpectraS3Request(AbstractRequest):
 
 class ModifyTapeDriveSpectraS3Request(AbstractRequest):
     
-    def __init__(self, tape_drive_id, quiesced=None, reserved_task_type=None):
+    def __init__(self, tape_drive_id, minimum_task_priority=None, quiesced=None, reserved_task_type=None):
         super(ModifyTapeDriveSpectraS3Request, self).__init__()
         self.tape_drive_id = tape_drive_id
+        if minimum_task_priority is not None:
+            self.query_params['minimum_task_priority'] = minimum_task_priority
         if quiesced is not None:
             self.query_params['quiesced'] = quiesced
         if reserved_task_type is not None:
@@ -7663,7 +7818,7 @@ class GetS3TargetSpectraS3Request(AbstractRequest):
 
 class GetS3TargetsSpectraS3Request(AbstractRequest):
     
-    def __init__(self, access_key=None, data_path_end_point=None, default_read_preference=None, https=None, last_page=None, name=None, page_length=None, page_offset=None, page_start_marker=None, permit_going_out_of_sync=None, quiesced=None, region=None, state=None):
+    def __init__(self, access_key=None, data_path_end_point=None, default_read_preference=None, https=None, last_page=None, name=None, naming_mode=None, page_length=None, page_offset=None, page_start_marker=None, permit_going_out_of_sync=None, quiesced=None, region=None, state=None):
         super(GetS3TargetsSpectraS3Request, self).__init__()
         if access_key is not None:
             self.query_params['access_key'] = access_key
@@ -7677,6 +7832,8 @@ class GetS3TargetsSpectraS3Request(AbstractRequest):
             self.query_params['last_page'] = last_page
         if name is not None:
             self.query_params['name'] = name
+        if naming_mode is not None:
+            self.query_params['naming_mode'] = naming_mode
         if page_length is not None:
             self.query_params['page_length'] = page_length
         if page_offset is not None:
@@ -7723,7 +7880,7 @@ class ModifyAllS3TargetsSpectraS3Request(AbstractRequest):
 
 class ModifyS3TargetSpectraS3Request(AbstractRequest):
     
-    def __init__(self, s3_target, access_key=None, auto_verify_frequency_in_days=None, cloud_bucket_prefix=None, cloud_bucket_suffix=None, data_path_end_point=None, default_read_preference=None, https=None, name=None, offline_data_staging_window_in_tb=None, permit_going_out_of_sync=None, proxy_domain=None, proxy_host=None, proxy_password=None, proxy_port=None, proxy_username=None, quiesced=None, region=None, secret_key=None, staged_data_expiration_in_days=None):
+    def __init__(self, s3_target, access_key=None, auto_verify_frequency_in_days=None, cloud_bucket_prefix=None, cloud_bucket_suffix=None, data_path_end_point=None, default_read_preference=None, https=None, name=None, naming_mode=None, offline_data_staging_window_in_tb=None, permit_going_out_of_sync=None, proxy_domain=None, proxy_host=None, proxy_password=None, proxy_port=None, proxy_username=None, quiesced=None, region=None, restricted_access=None, secret_key=None, staged_data_expiration_in_days=None):
         super(ModifyS3TargetSpectraS3Request, self).__init__()
         self.s3_target = s3_target
         if access_key is not None:
@@ -7742,6 +7899,8 @@ class ModifyS3TargetSpectraS3Request(AbstractRequest):
             self.query_params['https'] = https
         if name is not None:
             self.query_params['name'] = name
+        if naming_mode is not None:
+            self.query_params['naming_mode'] = naming_mode
         if offline_data_staging_window_in_tb is not None:
             self.query_params['offline_data_staging_window_in_tb'] = offline_data_staging_window_in_tb
         if permit_going_out_of_sync is not None:
@@ -7760,6 +7919,8 @@ class ModifyS3TargetSpectraS3Request(AbstractRequest):
             self.query_params['quiesced'] = quiesced
         if region is not None:
             self.query_params['region'] = region
+        if restricted_access is not None:
+            self.query_params['restricted_access'] = restricted_access
         if secret_key is not None:
             self.query_params['secret_key'] = secret_key
         if staged_data_expiration_in_days is not None:
@@ -7770,7 +7931,7 @@ class ModifyS3TargetSpectraS3Request(AbstractRequest):
 
 class RegisterS3TargetSpectraS3Request(AbstractRequest):
     
-    def __init__(self, access_key, name, secret_key, auto_verify_frequency_in_days=None, cloud_bucket_prefix=None, cloud_bucket_suffix=None, data_path_end_point=None, default_read_preference=None, https=None, offline_data_staging_window_in_tb=None, permit_going_out_of_sync=None, proxy_domain=None, proxy_host=None, proxy_password=None, proxy_port=None, proxy_username=None, region=None, staged_data_expiration_in_days=None):
+    def __init__(self, access_key, name, secret_key, auto_verify_frequency_in_days=None, cloud_bucket_prefix=None, cloud_bucket_suffix=None, data_path_end_point=None, default_read_preference=None, https=None, naming_mode=None, offline_data_staging_window_in_tb=None, permit_going_out_of_sync=None, proxy_domain=None, proxy_host=None, proxy_password=None, proxy_port=None, proxy_username=None, region=None, restricted_access=None, staged_data_expiration_in_days=None):
         super(RegisterS3TargetSpectraS3Request, self).__init__()
         self.query_params['access_key'] = access_key
         self.query_params['name'] = name
@@ -7787,6 +7948,8 @@ class RegisterS3TargetSpectraS3Request(AbstractRequest):
             self.query_params['default_read_preference'] = default_read_preference
         if https is not None:
             self.query_params['https'] = https
+        if naming_mode is not None:
+            self.query_params['naming_mode'] = naming_mode
         if offline_data_staging_window_in_tb is not None:
             self.query_params['offline_data_staging_window_in_tb'] = offline_data_staging_window_in_tb
         if permit_going_out_of_sync is not None:
@@ -7803,6 +7966,8 @@ class RegisterS3TargetSpectraS3Request(AbstractRequest):
             self.query_params['proxy_username'] = proxy_username
         if region is not None:
             self.query_params['region'] = region
+        if restricted_access is not None:
+            self.query_params['restricted_access'] = restricted_access
         if staged_data_expiration_in_days is not None:
             self.query_params['staged_data_expiration_in_days'] = staged_data_expiration_in_days
         self.path = '/_rest_/s3_target'
@@ -7823,9 +7988,11 @@ class VerifyS3TargetSpectraS3Request(AbstractRequest):
 
 class DelegateCreateUserSpectraS3Request(AbstractRequest):
     
-    def __init__(self, name, id=None, max_buckets=None, secret_key=None):
+    def __init__(self, name, default_data_policy_id=None, id=None, max_buckets=None, secret_key=None):
         super(DelegateCreateUserSpectraS3Request, self).__init__()
         self.query_params['name'] = name
+        if default_data_policy_id is not None:
+            self.query_params['default_data_policy_id'] = default_data_policy_id
         if id is not None:
             self.query_params['id'] = id
         if max_buckets is not None:
@@ -7948,6 +8115,13 @@ class AbortMultiPartUploadResponse(AbstractResponse):
     
     def process_response(self, response):
         self.__check_status_codes__([204])
+        
+
+
+class CompleteBlobResponse(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
         
 
 
@@ -9271,6 +9445,14 @@ class PutAzureTargetFailureNotificationRegistrationSpectraS3Response(AbstractRes
             self.result = parseModel(xmldom.fromstring(response.read()), AzureTargetFailureNotificationRegistration())
 
 
+class PutBucketChangesNotificationRegistrationSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([201])
+        if self.response.status == 201:
+            self.result = parseModel(xmldom.fromstring(response.read()), BucketChangesNotificationRegistration())
+
+
 class PutDs3TargetFailureNotificationRegistrationSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
@@ -9376,6 +9558,13 @@ class PutTapePartitionFailureNotificationRegistrationSpectraS3Response(AbstractR
 
 
 class DeleteAzureTargetFailureNotificationRegistrationSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([204])
+        
+
+
+class DeleteBucketChangesNotificationRegistrationSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
         self.__check_status_codes__([204])
@@ -9491,6 +9680,42 @@ class GetAzureTargetFailureNotificationRegistrationsSpectraS3Response(AbstractRe
         self.__check_status_codes__([200])
         if self.response.status == 200:
             self.result = parseModel(xmldom.fromstring(response.read()), AzureTargetFailureNotificationRegistrationList())
+            self.paging_truncated = self.parse_int_header('page-truncated', response.getheaders())
+            self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
+
+
+class GetBucketChangesNotificationRegistrationSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), BucketChangesNotificationRegistration())
+
+
+class GetBucketChangesNotificationRegistrationsSpectraS3Response(AbstractResponse):
+    def __init__(self, response, request):
+        self.paging_truncated = None
+        self.paging_total_result_count = None
+        super(self.__class__, self).__init__(response, request)
+
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), BucketChangesNotificationRegistrationList())
+            self.paging_truncated = self.parse_int_header('page-truncated', response.getheaders())
+            self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
+
+
+class GetBucketHistorySpectraS3Response(AbstractResponse):
+    def __init__(self, response, request):
+        self.paging_truncated = None
+        self.paging_total_result_count = None
+        super(self.__class__, self).__init__(response, request)
+
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), BucketHistoryEventList())
             self.paging_truncated = self.parse_int_header('page-truncated', response.getheaders())
             self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
 
@@ -11295,6 +11520,11 @@ class Client(object):
             raise TypeError('request for abort_multi_part_upload should be of type AbortMultiPartUploadRequest but was ' + request.__class__.__name__)
         return AbortMultiPartUploadResponse(self.net_client.get_response(request), request)
     
+    def complete_blob(self, request):
+        if not isinstance(request, CompleteBlobRequest):
+            raise TypeError('request for complete_blob should be of type CompleteBlobRequest but was ' + request.__class__.__name__)
+        return CompleteBlobResponse(self.net_client.get_response(request), request)
+    
     def complete_multi_part_upload(self, request):
         if not isinstance(request, CompleteMultiPartUploadRequest):
             raise TypeError('request for complete_multi_part_upload should be of type CompleteMultiPartUploadRequest but was ' + request.__class__.__name__)
@@ -12000,6 +12230,11 @@ class Client(object):
             raise TypeError('request for put_azure_target_failure_notification_registration_spectra_s3 should be of type PutAzureTargetFailureNotificationRegistrationSpectraS3Request but was ' + request.__class__.__name__)
         return PutAzureTargetFailureNotificationRegistrationSpectraS3Response(self.net_client.get_response(request), request)
     
+    def put_bucket_changes_notification_registration_spectra_s3(self, request):
+        if not isinstance(request, PutBucketChangesNotificationRegistrationSpectraS3Request):
+            raise TypeError('request for put_bucket_changes_notification_registration_spectra_s3 should be of type PutBucketChangesNotificationRegistrationSpectraS3Request but was ' + request.__class__.__name__)
+        return PutBucketChangesNotificationRegistrationSpectraS3Response(self.net_client.get_response(request), request)
+    
     def put_ds3_target_failure_notification_registration_spectra_s3(self, request):
         if not isinstance(request, PutDs3TargetFailureNotificationRegistrationSpectraS3Request):
             raise TypeError('request for put_ds3_target_failure_notification_registration_spectra_s3 should be of type PutDs3TargetFailureNotificationRegistrationSpectraS3Request but was ' + request.__class__.__name__)
@@ -12069,6 +12304,11 @@ class Client(object):
         if not isinstance(request, DeleteAzureTargetFailureNotificationRegistrationSpectraS3Request):
             raise TypeError('request for delete_azure_target_failure_notification_registration_spectra_s3 should be of type DeleteAzureTargetFailureNotificationRegistrationSpectraS3Request but was ' + request.__class__.__name__)
         return DeleteAzureTargetFailureNotificationRegistrationSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def delete_bucket_changes_notification_registration_spectra_s3(self, request):
+        if not isinstance(request, DeleteBucketChangesNotificationRegistrationSpectraS3Request):
+            raise TypeError('request for delete_bucket_changes_notification_registration_spectra_s3 should be of type DeleteBucketChangesNotificationRegistrationSpectraS3Request but was ' + request.__class__.__name__)
+        return DeleteBucketChangesNotificationRegistrationSpectraS3Response(self.net_client.get_response(request), request)
     
     def delete_ds3_target_failure_notification_registration_spectra_s3(self, request):
         if not isinstance(request, DeleteDs3TargetFailureNotificationRegistrationSpectraS3Request):
@@ -12144,6 +12384,21 @@ class Client(object):
         if not isinstance(request, GetAzureTargetFailureNotificationRegistrationsSpectraS3Request):
             raise TypeError('request for get_azure_target_failure_notification_registrations_spectra_s3 should be of type GetAzureTargetFailureNotificationRegistrationsSpectraS3Request but was ' + request.__class__.__name__)
         return GetAzureTargetFailureNotificationRegistrationsSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def get_bucket_changes_notification_registration_spectra_s3(self, request):
+        if not isinstance(request, GetBucketChangesNotificationRegistrationSpectraS3Request):
+            raise TypeError('request for get_bucket_changes_notification_registration_spectra_s3 should be of type GetBucketChangesNotificationRegistrationSpectraS3Request but was ' + request.__class__.__name__)
+        return GetBucketChangesNotificationRegistrationSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def get_bucket_changes_notification_registrations_spectra_s3(self, request):
+        if not isinstance(request, GetBucketChangesNotificationRegistrationsSpectraS3Request):
+            raise TypeError('request for get_bucket_changes_notification_registrations_spectra_s3 should be of type GetBucketChangesNotificationRegistrationsSpectraS3Request but was ' + request.__class__.__name__)
+        return GetBucketChangesNotificationRegistrationsSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def get_bucket_history_spectra_s3(self, request):
+        if not isinstance(request, GetBucketHistorySpectraS3Request):
+            raise TypeError('request for get_bucket_history_spectra_s3 should be of type GetBucketHistorySpectraS3Request but was ' + request.__class__.__name__)
+        return GetBucketHistorySpectraS3Response(self.net_client.get_response(request), request)
     
     def get_ds3_target_failure_notification_registration_spectra_s3(self, request):
         if not isinstance(request, GetDs3TargetFailureNotificationRegistrationSpectraS3Request):

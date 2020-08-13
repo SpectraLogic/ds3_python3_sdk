@@ -37,7 +37,7 @@ client.put_bucket(ds3.PutBucketRequest("TestBucket"))
 getServiceResponse = client.get_service(ds3.GetServiceRequest())
 
 for bucket in getServiceResponse.result['BucketList']:
-    print bucket['Name']
+    print(bucket['Name'])
 ```
 
 Client
