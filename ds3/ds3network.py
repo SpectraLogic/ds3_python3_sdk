@@ -202,10 +202,14 @@ class NetworkClient(object):
 
         # add additonal header information if specficied in the request. This might be a byte range for example
         amz_headers = {}
+        checksum = ''
         for key, value in request.headers.items():
             if key == 'Content-Length':
                 # Add to headers,  but not to amz-headers
                 headers[key] = value
+            elif key in ['Content-CRC32', 'Content-CRC32C', 'Content-MD5', 'Content-SHA256', 'Content-SHA512']:
+                headers[key] = value
+                checksum = value
             elif not key.startswith('x-amz-meta-'):
                 amz_headers['x-amz-meta-' + key] = self.canonicalize_header_value(value)
             else:
@@ -217,6 +221,7 @@ class NetworkClient(object):
             canonicalized_amz_header = self.canonicalized_amz_headers(amz_headers)
             headers['Content-Type'] = 'application/octet-stream'
             headers['Authorization'] = self.build_authorization(verb=request.http_verb,
+                                                                checksum=checksum,
                                                                 date=date,
                                                                 content_type='application/octet-stream',
                                                                 canonicalized_amz_header=canonicalized_amz_header,
@@ -262,18 +267,18 @@ class NetworkClient(object):
                 path += '=' + str(query_params['uploads'])
         return path
 
-    def build_authorization(self, verb='', date='', content_type='', resource='', canonicalized_amz_header=''):
+    def build_authorization(self, verb='', checksum='', date='', content_type='', resource='', canonicalized_amz_header=''):
         ###Build the S3 authorization###
-        signature = self.aws_signature(self.credentials.key, verb=verb, content_type=content_type,
+        signature = self.aws_signature(self.credentials.key, verb=verb, checksum=checksum, content_type=content_type,
                                        date=date, canonicalized_amz_header=canonicalized_amz_header,
                                        canonicalized_resource=resource)
         return 'AWS ' + self.credentials.accessId + ':' + signature
 
-    def aws_signature(self, key, verb='GET', md5='', content_type='', date='', canonicalized_amz_header='',
+    def aws_signature(self, key, verb='GET', checksum='', content_type='', date='', canonicalized_amz_header='',
                       canonicalized_resource=''):
         ###compute and sign S3 signature###
         signature_string = verb + '\n'
-        signature_string += md5 + '\n'
+        signature_string += checksum + '\n'
         signature_string += content_type + '\n'
         signature_string += date + '\n'
         signature_string += canonicalized_amz_header
