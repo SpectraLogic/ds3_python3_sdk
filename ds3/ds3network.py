@@ -217,7 +217,7 @@ class NetworkClient(object):
 
         headers.update(amz_headers)
 
-        if request.body is not None and request.body is not "":
+        if request.body is not None and request.body != "":
             canonicalized_amz_header = self.canonicalized_amz_headers(amz_headers)
             headers['Content-Type'] = 'application/octet-stream'
             headers['Authorization'] = self.build_authorization(verb=request.http_verb,
@@ -261,6 +261,8 @@ class NetworkClient(object):
             path += '?delete'
         if 'versioning' in query_params:
             path += '?versioning=' + str(query_params['versioning'])
+        if 'versions' in query_params:
+            path += '?versions=' + str(query_params['versions'])
         if 'uploads' in query_params:
             path += '?uploads'
             if query_params['uploads'] is not None:
@@ -289,7 +291,7 @@ class NetworkClient(object):
         signer = hmac.new(key.encode('utf-8'), digestmod=sha1)
         signer.update(contents.encode('utf-8'))
         digest = signer.digest()
-        return base64.encodestring(digest).strip().decode('utf-8')
+        return base64.encodebytes(digest).strip().decode('utf-8')
 
     def normalize_string(self, url):
         return urllib.parse.quote(url)
