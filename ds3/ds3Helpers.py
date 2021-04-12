@@ -88,8 +88,9 @@ def object_name_to_file_path(object_name: str) -> str:
 
 
 class Helper(object):
-    def __init__(self, client: Client):
+    def __init__(self, client: Client, retry_delay_in_seconds: int = 60):
         self.client = client
+        self.retry_delay_in_seconds = retry_delay_in_seconds
 
     def put_objects(self, put_objects: List[HelperPutObject], bucket: str, max_threads: int = 5) -> str:
         ds3_put_objects: List[Ds3PutObject] = []
@@ -120,7 +121,7 @@ class Helper(object):
             chunks = available_chunks.result['ObjectsList']
 
             if len(chunks) <= 0:
-                time.sleep(available_chunks.retryAfter)
+                time.sleep(self.retry_delay_in_seconds)
                 continue
 
             # retrieve all available blobs concurrently
@@ -207,7 +208,7 @@ class Helper(object):
             chunks = available_chunks.result['ObjectsList']
 
             if len(chunks) <= 0:
-                time.sleep(available_chunks.retryAfter)
+                time.sleep(self.retry_delay_in_seconds)
                 continue
 
             # retrieve all available blobs concurrently
