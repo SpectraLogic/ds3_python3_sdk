@@ -67,7 +67,7 @@ while len(chunkIds) > 0:
     # Check to make sure we got some chunks, if we did not sleep and retry.
     # Having no chunks ready may indicate that the BP cache is currently full.
     if len(chunks) == 0:
-        time.sleep(availableChunks.retryAfter)
+        time.sleep(60)
         continue
 
     # For each chunk that is available, check to make sure we haven't processed it already.

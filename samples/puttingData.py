@@ -61,7 +61,7 @@ while len(chunkIds) > 0:
     # check to make sure we got some chunks, if we did not
     # sleep and retry.  This could mean that the cache is full
     if len(chunks) == 0:
-        time.sleep(availableChunks.retryAfter)
+        time.sleep(60)
         continue
 
     # for each chunk that is available, check to make sure
