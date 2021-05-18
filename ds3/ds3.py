@@ -1097,6 +1097,7 @@ class TapeDrive(object):
             'ForceTapeRemoval': None,
             'Id': None,
             'LastCleaned': None,
+            'MaxFailedTapes': None,
             'MfgSerialNumber': None,
             'MinimumTaskPriority': None,
             'PartitionId': None,
@@ -1141,6 +1142,8 @@ class TapePartition(object):
         self.attributes = []
         self.elements = {
             'AutoCompactionEnabled': None,
+            'AutoQuiesceEnabled': None,
+            'DriveIdleTimeoutInMinutes': None,
             'DriveType': None,
             'ErrorMessage': None,
             'Id': None,
@@ -1461,6 +1464,7 @@ class CacheFilesystemInformation(object):
         self.elements = {
             'AvailableCapacityInBytes': None,
             'CacheFilesystem': CacheFilesystem(),
+            'JobLockedCacheInBytes': None,
             'Summary': None,
             'TotalCapacityInBytes': None,
             'UnavailableCapacityInBytes': None,
@@ -1560,6 +1564,8 @@ class DetailedTapePartition(object):
         self.attributes = []
         self.elements = {
             'AutoCompactionEnabled': None,
+            'AutoQuiesceEnabled': None,
+            'DriveIdleTimeoutInMinutes': None,
             'DriveType': None,
             'ErrorMessage': None,
             'Id': None,
@@ -1837,6 +1843,8 @@ class NamedDetailedTapePartition(object):
         self.attributes = []
         self.elements = {
             'AutoCompactionEnabled': None,
+            'AutoQuiesceEnabled': None,
+            'DriveIdleTimeoutInMinutes': None,
             'DriveType': None,
             'ErrorMessage': None,
             'Id': None,
@@ -6979,6 +6987,16 @@ class InspectTapeSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.PUT
 
 
+class MarkTapeForCompactionSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, tape_id):
+        super(MarkTapeForCompactionSpectraS3Request, self).__init__()
+        self.tape_id = tape_id
+        self.query_params['operation'] = 'mark_for_compaction'
+        self.path = '/_rest_/tape/' + tape_id
+        self.http_verb = HttpVerb.PUT
+
+
 class ModifyAllTapePartitionsSpectraS3Request(AbstractRequest):
     
     def __init__(self, quiesced):
@@ -6990,9 +7008,11 @@ class ModifyAllTapePartitionsSpectraS3Request(AbstractRequest):
 
 class ModifyTapeDriveSpectraS3Request(AbstractRequest):
     
-    def __init__(self, tape_drive_id, minimum_task_priority=None, quiesced=None, reserved_task_type=None):
+    def __init__(self, tape_drive_id, max_failed_tapes=None, minimum_task_priority=None, quiesced=None, reserved_task_type=None):
         super(ModifyTapeDriveSpectraS3Request, self).__init__()
         self.tape_drive_id = tape_drive_id
+        if max_failed_tapes is not None:
+            self.query_params['max_failed_tapes'] = max_failed_tapes
         if minimum_task_priority is not None:
             self.query_params['minimum_task_priority'] = minimum_task_priority
         if quiesced is not None:
@@ -7005,11 +7025,15 @@ class ModifyTapeDriveSpectraS3Request(AbstractRequest):
 
 class ModifyTapePartitionSpectraS3Request(AbstractRequest):
     
-    def __init__(self, tape_partition, auto_compaction_enabled=None, minimum_read_reserved_drives=None, minimum_write_reserved_drives=None, quiesced=None, serial_number=None):
+    def __init__(self, tape_partition, auto_compaction_enabled=None, auto_quiesce_enabled=None, drive_idle_timeout_in_minutes=None, minimum_read_reserved_drives=None, minimum_write_reserved_drives=None, quiesced=None, serial_number=None):
         super(ModifyTapePartitionSpectraS3Request, self).__init__()
         self.tape_partition = tape_partition
         if auto_compaction_enabled is not None:
             self.query_params['auto_compaction_enabled'] = auto_compaction_enabled
+        if auto_quiesce_enabled is not None:
+            self.query_params['auto_quiesce_enabled'] = auto_quiesce_enabled
+        if drive_idle_timeout_in_minutes is not None:
+            self.query_params['drive_idle_timeout_in_minutes'] = drive_idle_timeout_in_minutes
         if minimum_read_reserved_drives is not None:
             self.query_params['minimum_read_reserved_drives'] = minimum_read_reserved_drives
         if minimum_write_reserved_drives is not None:
@@ -10900,6 +10924,14 @@ class InspectTapeSpectraS3Response(AbstractResponse):
             self.result = parseModel(xmldom.fromstring(response.read()), Tape())
 
 
+class MarkTapeForCompactionSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), Tape())
+
+
 class ModifyAllTapePartitionsSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
@@ -13033,6 +13065,11 @@ class Client(object):
         if not isinstance(request, InspectTapeSpectraS3Request):
             raise TypeError('request for inspect_tape_spectra_s3 should be of type InspectTapeSpectraS3Request but was ' + request.__class__.__name__)
         return InspectTapeSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def mark_tape_for_compaction_spectra_s3(self, request):
+        if not isinstance(request, MarkTapeForCompactionSpectraS3Request):
+            raise TypeError('request for mark_tape_for_compaction_spectra_s3 should be of type MarkTapeForCompactionSpectraS3Request but was ' + request.__class__.__name__)
+        return MarkTapeForCompactionSpectraS3Response(self.net_client.get_response(request), request)
     
     def modify_all_tape_partitions_spectra_s3(self, request):
         if not isinstance(request, ModifyAllTapePartitionsSpectraS3Request):
