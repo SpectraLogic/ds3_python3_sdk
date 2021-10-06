@@ -330,8 +330,10 @@ class DataPathBackend(object):
             'DefaultVerifyDataPriorToImport': None,
             'Id': None,
             'InstanceId': None,
+            'IomCacheLimitationPercent': None,
             'IomEnabled': None,
             'LastHeartbeat': None,
+            'MaxAggregatedBlobsPerChunk': None,
             'PartiallyVerifyLastPercentOfTapes': None,
             'UnavailableMediaPolicy': None,
             'UnavailablePoolMaxJobRetryInMins': None,
@@ -3169,7 +3171,7 @@ class GetDataPlannerBlobStoreTasksSpectraS3Request(AbstractRequest):
 
 class ModifyDataPathBackendSpectraS3Request(AbstractRequest):
     
-    def __init__(self, activated=None, allow_new_job_requests=None, auto_activate_timeout_in_mins=None, auto_inspect=None, cache_available_retry_after_in_seconds=None, default_verify_data_after_import=None, default_verify_data_prior_to_import=None, iom_enabled=None, partially_verify_last_percent_of_tapes=None, unavailable_media_policy=None, unavailable_pool_max_job_retry_in_mins=None, unavailable_tape_partition_max_job_retry_in_mins=None):
+    def __init__(self, activated=None, allow_new_job_requests=None, auto_activate_timeout_in_mins=None, auto_inspect=None, cache_available_retry_after_in_seconds=None, default_verify_data_after_import=None, default_verify_data_prior_to_import=None, iom_cache_limitation_percent=None, iom_enabled=None, max_aggregated_blobs_per_chunk=None, partially_verify_last_percent_of_tapes=None, unavailable_media_policy=None, unavailable_pool_max_job_retry_in_mins=None, unavailable_tape_partition_max_job_retry_in_mins=None):
         super(ModifyDataPathBackendSpectraS3Request, self).__init__()
         if activated is not None:
             self.query_params['activated'] = activated
@@ -3185,8 +3187,12 @@ class ModifyDataPathBackendSpectraS3Request(AbstractRequest):
             self.query_params['default_verify_data_after_import'] = default_verify_data_after_import
         if default_verify_data_prior_to_import is not None:
             self.query_params['default_verify_data_prior_to_import'] = default_verify_data_prior_to_import
+        if iom_cache_limitation_percent is not None:
+            self.query_params['iom_cache_limitation_percent'] = iom_cache_limitation_percent
         if iom_enabled is not None:
             self.query_params['iom_enabled'] = iom_enabled
+        if max_aggregated_blobs_per_chunk is not None:
+            self.query_params['max_aggregated_blobs_per_chunk'] = max_aggregated_blobs_per_chunk
         if partially_verify_last_percent_of_tapes is not None:
             self.query_params['partially_verify_last_percent_of_tapes'] = partially_verify_last_percent_of_tapes
         if unavailable_media_policy is not None:

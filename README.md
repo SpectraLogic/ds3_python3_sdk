@@ -84,3 +84,10 @@ To put data to a Spectra S3 appliance you have to do it inside the context of wh
 [An example of getting data with the Python SDK](samples/gettingData.py)
 
 [An example of how give objects on the server a different name than what is on the filesystem, and how to delete objects by folder](samples/renaming.py)
+
+## Creating a New Release
+Update the version of the SDK before creating a new release. The format is `<major>.<minor>.<patch>`, where the 
+`<major>.<minor>` numbers must match the version of BP. The `<patch>` is an incrementing number that increments with 
+each SDK release for a given major/minor release.
+
+The release number is specified in `setup.py`.
