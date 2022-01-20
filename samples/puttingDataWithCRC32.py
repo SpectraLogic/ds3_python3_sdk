@@ -18,6 +18,8 @@ import zlib
 
 client = ds3.createClientFromEnv()
 
+crc_byte_length = 4
+
 bucketName = "books"
 
 # make sure the bucket that we will be sending objects to exists
@@ -83,7 +85,8 @@ while len(chunkIds) > 0:
                 objectDataStream.seek(int(obj['Offset']), 0)
                 objectChunk = objectDataStream.read(int(obj['Length']))
                 checksum = zlib.crc32(objectChunk)
-                encodedChecksum = base64.b64encode(checksum.to_bytes((checksum.bit_length() + 7) // 8, byteorder='big')).decode()
+                encodedChecksum = base64.b64encode(
+                    checksum.to_bytes(crc_byte_length, byteorder='big')).decode()
                 objectDataStream.seek(int(obj['Offset']), 0)
                 client.put_object(ds3.PutObjectRequest(bucketName,
                                                        obj['Name'],
