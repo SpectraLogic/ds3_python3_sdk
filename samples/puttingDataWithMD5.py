@@ -80,9 +80,19 @@ while len(chunkIds) > 0:
                 localFileName = "resources/" + obj['Name']
                 objectDataStream = open(localFileName, "rb")
                 objectDataStream.seek(int(obj['Offset']), 0)
-                objectChunk = objectDataStream.read(int(obj['Length']))
-                checksum = hashlib.md5(objectChunk)
-                encodedChecksum = base64.b64encode(checksum.digest()).decode('utf-8')
+
+                # Calculate the rolling checksum by loading the file 1 MiB at a time. This allows
+                # the calculation for very large blobs that otherwise cannot be loaded fully into memory.
+                bytesRead = 0
+                blobLength = int(obj['Length'])
+                checksumCalculator = hashlib.md5()
+                while bytesRead < blobLength:
+                    bytesToRead = min(1024 * 1024, blobLength - bytesRead)
+                    curBytes = objectDataStream.read(bytesToRead)
+                    checksumCalculator.update(curBytes)
+                    bytesRead += bytesToRead
+
+                encodedChecksum = base64.b64encode(checksumCalculator.digest()).decode('utf-8')
                 objectDataStream.seek(int(obj['Offset']), 0)
                 client.put_object(ds3.PutObjectRequest(bucketName,
                                                        obj['Name'],
