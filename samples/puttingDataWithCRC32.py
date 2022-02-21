@@ -1,4 +1,4 @@
-#   Copyright 2014-2017 Spectra Logic Corporation. All Rights Reserved.
+#   Copyright 2014-2022 Spectra Logic Corporation. All Rights Reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License"). You may not use
 #   this file except in compliance with the License. A copy of the License is located at
 #
@@ -9,12 +9,12 @@
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
 
-from ds3 import ds3
+import base64
 import os
 import time
-import sys
-import base64
 import zlib
+
+from ds3 import ds3
 
 client = ds3.createClientFromEnv()
 
@@ -83,8 +83,18 @@ while len(chunkIds) > 0:
                 localFileName = "resources/" + obj['Name']
                 objectDataStream = open(localFileName, "rb")
                 objectDataStream.seek(int(obj['Offset']), 0)
-                objectChunk = objectDataStream.read(int(obj['Length']))
-                checksum = zlib.crc32(objectChunk)
+
+                # Calculate the rolling checksum by loading the file 1 MiB at a time. This allows
+                # the calculation for very large blobs that otherwise cannot be loaded fully into memory.
+                bytesRead = 0
+                checksum = 0
+                blobLength = int(obj['Length'])
+                while bytesRead < blobLength:
+                    bytesToRead = min(1024 * 1024, blobLength - bytesRead)
+                    curBytes = objectDataStream.read(bytesToRead)
+                    checksum = zlib.crc32(curBytes, checksum)
+                    bytesRead += bytesToRead
+
                 encodedChecksum = base64.b64encode(
                     checksum.to_bytes(crc_byte_length, byteorder='big')).decode()
                 objectDataStream.seek(int(obj['Offset']), 0)

@@ -1,4 +1,4 @@
-#   Copyright 2021 Spectra Logic Corporation. All Rights Reserved.
+#   Copyright 2021-2022 Spectra Logic Corporation. All Rights Reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License"). You may not use
 #   this file except in compliance with the License. A copy of the License is located at
 #
@@ -8,14 +8,17 @@
 #   This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
-
-import time
 import concurrent.futures
-from .ds3 import *
+import hashlib
+import time
+import zlib
 from os import walk, path
+from platform import system
 from typing import List, Set, Dict
 
-from platform import system
+from .ds3 import *
+
+crc_byte_length = 4
 
 
 class EmptyReader(object):
@@ -87,12 +90,90 @@ def object_name_to_file_path(object_name: str) -> str:
     return object_name
 
 
+def calculate_checksum_header(object_data_stream, checksum_type: str, length: int):
+    bytes_read = 0
+    if checksum_type == 'CRC_32':
+        checksum = 0
+        while bytes_read < length:
+            bytes_to_read = min(1024 * 1024, length - bytes_read)
+            cur_bytes = object_data_stream.read(bytes_to_read)
+            checksum = zlib.crc32(cur_bytes, checksum)
+            bytes_read += bytes_to_read
+        encoded_checksum = base64.b64encode(
+            checksum.to_bytes(crc_byte_length, byteorder='big')).decode()
+        return {'Content-CRC32': encoded_checksum}
+    else:
+        if checksum_type == 'MD5':
+            checksum_calculator = hashlib.md5()
+            header_key = 'Content-MD5'
+        elif checksum_type == 'SHA_256':
+            checksum_calculator = hashlib.sha256()
+            header_key = 'Content-SHA256'
+        elif checksum_type == 'SHA_512':
+            checksum_calculator = hashlib.sha512()
+            header_key = 'Content-SHA512'
+        else:
+            raise 'Not Implemented: calculating checksum type {0} is not currently supported in the SDK helpers'.format(
+                checksum_type)
+        while bytes_read < length:
+            bytes_to_read = min(1024 * 1024, length - bytes_read)
+            cur_bytes = object_data_stream.read(bytes_to_read)
+            checksum_calculator.update(cur_bytes)
+            bytes_read += bytes_to_read
+        encoded_checksum = base64.b64encode(checksum_calculator.digest()).decode('utf-8')
+        return {header_key: encoded_checksum}
+
+
 class Helper(object):
+    """A class that moves data to and from a Black Pearl"""
+
     def __init__(self, client: Client, retry_delay_in_seconds: int = 60):
+        """
+        Parameters
+        ----------
+        client : ds3.Client
+            A python client that is connected to a Black Pearl.
+        retry_delay_in_seconds : int
+            The number of seconds to wait between retrying a call if the Black Pearl is busy and unable to process the
+            previous attempt (aka when BP returns error code 307).
+        """
         self.client = client
         self.retry_delay_in_seconds = retry_delay_in_seconds
 
-    def put_objects(self, put_objects: List[HelperPutObject], bucket: str, max_threads: int = 5) -> str:
+    def get_checksum_type(self, bucket_name: str) -> str:
+        bucket_response = self.client.get_bucket_spectra_s3(GetBucketSpectraS3Request(bucket_name=bucket_name))
+
+        data_policy_id = bucket_response.result['DataPolicyId']
+        policy_response = self.client.get_data_policy_spectra_s3(
+            GetDataPolicySpectraS3Request(data_policy_id=data_policy_id))
+
+        return policy_response.result['ChecksumType']
+
+    def put_objects(self, put_objects: List[HelperPutObject], bucket: str, max_threads: int = 5,
+                    calculate_checksum: bool = False) -> str:
+        """
+        Puts a list of objects to a Black Pearl bucket.
+
+        Parameters
+        ----------
+        put_objects : List[HelperPutObject]
+            The list of objects to put into the BP bucket.
+        bucket : str
+            The name of the bucket where the objects are being landed.
+        max_threads : int
+            The number of concurrent objects being transferred at once (default 5).
+        calculate_checksum : bool
+            Whether the client calculates the object checksum before sending it to the BP (default False). The BP
+            also calculates the checksum and compares it with the value the client calculates. The object put will fail
+            if the client and BP checksums do not match. Note that calculating the checksum is processor intensive, and
+            it also requires two reads of the object (first to calculate checksum, and secondly to send the data). The
+            type of checksum calculated is determined by the data policy associated with the bucket.
+        """
+        # If calculating checksum, then determine the checksum type from the data policy
+        checksum_type = None
+        if calculate_checksum is True:
+            checksum_type = self.get_checksum_type(bucket_name=bucket)
+
         ds3_put_objects: List[Ds3PutObject] = []
         put_objects_map: Dict[str, HelperPutObject] = dict()
         for entry in put_objects:
@@ -137,22 +218,56 @@ class Helper(object):
                             blob_set.remove(cur_blob)
                             put_object = put_objects_map[cur_blob.name]
 
-                            executor.submit(self.put_blob, bucket, put_object, cur_blob.length, cur_blob.offset, job_id)
+                            executor.submit(self.put_blob, bucket, put_object, cur_blob.length, cur_blob.offset, job_id,
+                                            checksum_type)
 
         return job_id
 
-    def put_blob(self, bucket: str, put_object: HelperPutObject, length: int, offset: int, job_id: str):
+    def put_blob(self, bucket: str, put_object: HelperPutObject, length: int, offset: int, job_id: str,
+                 checksum_type: str = None):
+        headers = None
+        if checksum_type is not None:
+            checksum_stream = put_object.get_data_stream(offset=offset)
+            headers = calculate_checksum_header(object_data_stream=checksum_stream,
+                                                checksum_type=checksum_type,
+                                                length=length)
+            checksum_stream.close()
+
         stream = put_object.get_data_stream(offset)
         self.client.put_object(PutObjectRequest(bucket_name=bucket,
                                                 object_name=put_object.object_name,
                                                 length=length,
                                                 stream=stream,
                                                 offset=offset,
-                                                job=job_id))
+                                                job=job_id,
+                                                headers=headers))
         stream.close()
 
     def put_all_objects_in_directory(self, source_dir: str, bucket: str, objects_per_bp_job: int = 1000,
-                                     max_threads: int = 5) -> List[str]:
+                                     max_threads: int = 5, calculate_checksum: bool = False) -> List[str]:
+        """
+        Puts all files and subdirectories to a Black Pearl bucket.
+
+        Parameters
+        ----------
+        source_dir : str
+            The directory that contains all the files and subdirectories to be put to the BP. Note that subdirectories
+            will be represented by zero length objects whose name ends with the file path separator.
+        bucket : str
+            The name of the bucket where the files are being landed.
+        objects_per_bp_job : int
+            The number of objects per BP job (default 1000). A directory may contain more objects than a BP job can hold
+            (max 500,000). In order to put all objects in a very large directory, multiple BP jobs may need to be
+            created. This determines how many objects to bundle per BP job.
+        max_threads : int
+            The number of concurrent objects being transferred at once (default 5).
+        calculate_checksum : bool
+            Whether the client calculates the object checksum before sending it to the BP. The BP also calculates
+            the checksum and compares it with the value the client calculates. The object put will fail if the client
+            and BP checksums do not match. Note that calculating the checksum is processor intensive, and it also
+            requires two reads of the object (first to calculate checksum, and secondly to send the data). The type of
+            checksum calculated is determined by the data policy associated with the bucket.
+        """
         obj_list: List[HelperPutObject] = list()
         job_list: List[str] = list()
         for root, dirs, files in walk(top=source_dir):
@@ -162,7 +277,8 @@ class Helper(object):
                 size = os.path.getsize(obj_path)
                 obj_list.append(HelperPutObject(object_name=obj_name, file_path=obj_path, size=size))
                 if len(obj_list) >= objects_per_bp_job:
-                    job_list.append(self.put_objects(obj_list, bucket, max_threads=max_threads))
+                    job_list.append(self.put_objects(
+                        obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum))
                     obj_list = []
 
             for name in dirs:
@@ -171,15 +287,29 @@ class Helper(object):
                     path.join(path.normpath(path.relpath(path=dir_path, start=source_dir)), ""))
                 obj_list.append(HelperPutObject(object_name=dir_name, file_path=dir_path, size=0))
                 if len(obj_list) >= objects_per_bp_job:
-                    job_list.append(self.put_objects(obj_list, bucket, max_threads=max_threads))
+                    job_list.append(self.put_objects(
+                        obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum))
                     obj_list = []
 
         if len(obj_list) > 0:
-            job_list.append(self.put_objects(obj_list, bucket, max_threads=max_threads))
+            job_list.append(self.put_objects(
+                obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum))
 
         return job_list
 
     def get_objects(self, get_objects: List[HelperGetObject], bucket: str, max_threads: int = 5) -> str:
+        """
+        Retrieves a list of objects from a Black Pearl bucket.
+
+        Parameters
+        ----------
+        get_objects : List[HelperGetObject]
+            The list of objects to retrieve from the BP bucket.
+        bucket : str
+            The name of the bucket where the objects are being retrieved from.
+        max_threads : int
+            The number of concurrent objects being transferred at once (default 5).
+        """
         ds3_get_objects: List[Ds3GetObject] = []
         get_objects_map: Dict[str, HelperGetObject] = dict()
         for entry in get_objects:
@@ -240,6 +370,22 @@ class Helper(object):
 
     def get_all_files_in_bucket(self, destination_dir: str, bucket: str, objects_per_bp_job: int = 1000,
                                 max_threads: int = 5) -> List[str]:
+        """
+        Retrieves all objects from a Black Pearl bucket.
+
+        Parameters
+        ----------
+        destination_dir : str
+            The directory where all the objects will be landed.
+        bucket : str
+            The name of the bucket where the objects are being retrieved from.
+        objects_per_bp_job : int
+            The number of objects per BP job (default 1000). A bucket may contain more objects than a BP job can hold
+            (max 500,000). In order to put all objects in a very large bucket, multiple BP jobs may need to be created.
+            This determines how many objects to bundle per BP job.
+        max_threads : int
+            The number of concurrent objects being transferred at once (default 5).
+        """
         truncated: str = 'true'
         marker = ""
         job_ids: List[str] = []

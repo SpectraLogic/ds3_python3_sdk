@@ -32,7 +32,7 @@ def create_files_in_directory(directory: str, num_files: int, root_dir: str,
             obj_name = ds3Helpers.file_path_to_object_store_name(os.path.join(os.path.relpath(directory, root_dir), ""))
             put_objects.append(ds3Helpers.HelperPutObject(object_name=obj_name, file_path=directory, size=0))
 
-    # create an empty sub directory
+    # create an empty subdirectory
     if include_dirs:
         dir_path = os.path.join(directory, 'empty-dir')
         os.mkdir(path=dir_path)
@@ -155,7 +155,7 @@ class Ds3HelpersTestCase(unittest.TestCase):
     def test_put_and_get_all_objects_in_directory(self):
         bucket = f'ds3-python3-sdk-test-{uuid.uuid1()}'
 
-        # create temporary directory with some files and sub directories
+        # create temporary directory with some files and subdirectories
         source = tempfile.TemporaryDirectory(prefix="ds3-python3-sdk-src-")
 
         put_objects = create_files_in_directory(directory=source.name, num_files=5, root_dir=source.name)
@@ -203,6 +203,68 @@ class Ds3HelpersTestCase(unittest.TestCase):
         source.cleanup()
         destination.cleanup()
         client.delete_bucket_spectra_s3(ds3.DeleteBucketSpectraS3Request(bucket_name=bucket, force=True))
+
+    def test_put_all_objects_in_directory_with_md5_checksum(self):
+        self.put_all_objects_in_directory_with_checksum(checksum_type='MD5')
+
+    def test_put_all_objects_in_directory_with_crc32_checksum(self):
+        self.put_all_objects_in_directory_with_checksum(checksum_type='CRC_32')
+
+    def test_put_all_objects_in_directory_with_sha_256_checksum(self):
+        self.put_all_objects_in_directory_with_checksum(checksum_type='SHA_256')
+
+    def test_put_all_objects_in_directory_with_sha_512_checksum(self):
+        self.put_all_objects_in_directory_with_checksum(checksum_type='SHA_512')
+
+    def put_all_objects_in_directory_with_checksum(self, checksum_type: str):
+        bucket = f'ds3-python3-sdk-test-{uuid.uuid1()}'
+        # checksum_type = 'MD5'
+
+        # create the BP client
+        client = ds3.createClientFromEnv()
+
+        # create a data policy
+        data_policy = client.put_data_policy_spectra_s3(ds3.PutDataPolicySpectraS3Request(
+            name=f'sdk-test-{checksum_type}', checksum_type=checksum_type, end_to_end_crc_required=True))
+        data_policy_id = data_policy.result['Id']
+
+        # fetch existing storage domain
+        storage_domain = client.get_storage_domains_spectra_s3(ds3.GetStorageDomainsSpectraS3Request())
+        storage_domain_id = storage_domain.result['StorageDomainList'][0]['Id']
+        print("test")
+
+        data_persistence_rule = client.put_data_persistence_rule_spectra_s3(
+            ds3.PutDataPersistenceRuleSpectraS3Request(data_policy_id=data_policy_id, isolation_level='standard',
+                                                       storage_domain_id=storage_domain_id, type='permanent'))
+
+        # create temporary directory with some files and subdirectories
+        source = tempfile.TemporaryDirectory(prefix="ds3-python3-sdk-src-")
+
+        put_objects = create_files_in_directory(directory=source.name, num_files=5, root_dir=source.name,
+                                                include_dirs=True)
+
+        # create the BP helper and perform the put all objects call
+        client.put_bucket_spectra_s3(ds3.PutBucketSpectraS3Request(name=bucket, data_policy_id=data_policy_id))
+
+        helpers = ds3Helpers.Helper(client=client)
+        job_ids = helpers.put_all_objects_in_directory(source_dir=source.name, bucket=bucket, calculate_checksum=True)
+        self.assertGreaterEqual(len(job_ids), 1, "received at least one job id")
+
+        # verify all the files and directories are on the BP
+        for put_object in put_objects:
+            head_obj = client.head_object(ds3.HeadObjectRequest(bucket_name=bucket, object_name=put_object.object_name))
+            self.assertNotEqual(head_obj.result, "DOESNTEXIST")
+
+        # cleanup
+        source.cleanup()
+
+        client.delete_bucket_spectra_s3(ds3.DeleteBucketSpectraS3Request(bucket_name=bucket, force=True))
+
+        client.delete_data_persistence_rule_spectra_s3(
+            ds3.DeleteDataPersistenceRuleSpectraS3Request(data_persistence_rule_id=data_persistence_rule.result['Id']))
+
+        client.delete_data_policy_spectra_s3(
+            ds3.DeleteDataPolicySpectraS3Request(data_policy_id=data_policy_id))
 
 
 if __name__ == '__main__':
