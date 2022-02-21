@@ -163,7 +163,7 @@ class Helper(object):
         max_threads : int
             The number of concurrent objects being transferred at once (default 5).
         calculate_checksum : bool
-            Weather or not the client calculates the object checksum before sending it to the BP (default False). The BP
+            Whether the client calculates the object checksum before sending it to the BP (default False). The BP
             also calculates the checksum and compares it with the value the client calculates. The object put will fail
             if the client and BP checksums do not match. Note that calculating the checksum is processor intensive, and
             it also requires two reads of the object (first to calculate checksum, and secondly to send the data). The
@@ -262,7 +262,7 @@ class Helper(object):
         max_threads : int
             The number of concurrent objects being transferred at once (default 5).
         calculate_checksum : bool
-            Weather or not the client calculates the object checksum before sending it to the BP. The BP also calculates
+            Whether the client calculates the object checksum before sending it to the BP. The BP also calculates
             the checksum and compares it with the value the client calculates. The object put will fail if the client
             and BP checksums do not match. Note that calculating the checksum is processor intensive, and it also
             requires two reads of the object (first to calculate checksum, and secondly to send the data). The type of
