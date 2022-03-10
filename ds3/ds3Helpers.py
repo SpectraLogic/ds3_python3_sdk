@@ -150,7 +150,7 @@ class Helper(object):
         return policy_response.result['ChecksumType']
 
     def put_objects(self, put_objects: List[HelperPutObject], bucket: str, max_threads: int = 5,
-                    calculate_checksum: bool = False) -> str:
+                    calculate_checksum: bool = False, job_name: str = None) -> str:
         """
         Puts a list of objects to a Black Pearl bucket.
 
@@ -168,6 +168,8 @@ class Helper(object):
             if the client and BP checksums do not match. Note that calculating the checksum is processor intensive, and
             it also requires two reads of the object (first to calculate checksum, and secondly to send the data). The
             type of checksum calculated is determined by the data policy associated with the bucket.
+        job_name : str
+            The name to give the BP put job.
         """
         # If calculating checksum, then determine the checksum type from the data policy
         checksum_type = None
@@ -181,7 +183,7 @@ class Helper(object):
             put_objects_map[entry.object_name] = entry
 
         bulk_put = self.client.put_bulk_job_spectra_s3(
-            PutBulkJobSpectraS3Request(bucket_name=bucket, object_list=ds3_put_objects))
+            PutBulkJobSpectraS3Request(bucket_name=bucket, object_list=ds3_put_objects, name=job_name))
 
         job_id = bulk_put.result['JobId']
 
@@ -244,7 +246,8 @@ class Helper(object):
         stream.close()
 
     def put_all_objects_in_directory(self, source_dir: str, bucket: str, objects_per_bp_job: int = 1000,
-                                     max_threads: int = 5, calculate_checksum: bool = False) -> List[str]:
+                                     max_threads: int = 5, calculate_checksum: bool = False,
+                                     job_name: str = None) -> List[str]:
         """
         Puts all files and subdirectories to a Black Pearl bucket.
 
@@ -267,6 +270,8 @@ class Helper(object):
             and BP checksums do not match. Note that calculating the checksum is processor intensive, and it also
             requires two reads of the object (first to calculate checksum, and secondly to send the data). The type of
             checksum calculated is determined by the data policy associated with the bucket.
+        job_name : str
+            The name to give the BP put jobs. All BP jobs that are created will have the same name.
         """
         obj_list: List[HelperPutObject] = list()
         job_list: List[str] = list()
@@ -277,8 +282,8 @@ class Helper(object):
                 size = os.path.getsize(obj_path)
                 obj_list.append(HelperPutObject(object_name=obj_name, file_path=obj_path, size=size))
                 if len(obj_list) >= objects_per_bp_job:
-                    job_list.append(self.put_objects(
-                        obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum))
+                    job_list.append(self.put_objects(obj_list, bucket, max_threads=max_threads,
+                                                     calculate_checksum=calculate_checksum, job_name=job_name))
                     obj_list = []
 
             for name in dirs:
@@ -287,17 +292,18 @@ class Helper(object):
                     path.join(path.normpath(path.relpath(path=dir_path, start=source_dir)), ""))
                 obj_list.append(HelperPutObject(object_name=dir_name, file_path=dir_path, size=0))
                 if len(obj_list) >= objects_per_bp_job:
-                    job_list.append(self.put_objects(
-                        obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum))
+                    job_list.append(self.put_objects(obj_list, bucket, max_threads=max_threads,
+                                                     calculate_checksum=calculate_checksum, job_name=job_name))
                     obj_list = []
 
         if len(obj_list) > 0:
             job_list.append(self.put_objects(
-                obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum))
+                obj_list, bucket, max_threads=max_threads, calculate_checksum=calculate_checksum, job_name=job_name))
 
         return job_list
 
-    def get_objects(self, get_objects: List[HelperGetObject], bucket: str, max_threads: int = 5) -> str:
+    def get_objects(self, get_objects: List[HelperGetObject], bucket: str, max_threads: int = 5,
+                    job_name: str = None) -> str:
         """
         Retrieves a list of objects from a Black Pearl bucket.
 
@@ -309,6 +315,8 @@ class Helper(object):
             The name of the bucket where the objects are being retrieved from.
         max_threads : int
             The number of concurrent objects being transferred at once (default 5).
+        job_name : str
+            The name to give the BP get job.
         """
         ds3_get_objects: List[Ds3GetObject] = []
         get_objects_map: Dict[str, HelperGetObject] = dict()
@@ -317,7 +325,8 @@ class Helper(object):
             get_objects_map[entry.object_name] = entry
 
         bulk_get = self.client.get_bulk_job_spectra_s3(GetBulkJobSpectraS3Request(bucket_name=bucket,
-                                                                                  object_list=ds3_get_objects))
+                                                                                  object_list=ds3_get_objects,
+                                                                                  name=job_name))
 
         job_id = bulk_get.result['JobId']
 
@@ -369,7 +378,7 @@ class Helper(object):
         stream.close()
 
     def get_all_files_in_bucket(self, destination_dir: str, bucket: str, objects_per_bp_job: int = 1000,
-                                max_threads: int = 5) -> List[str]:
+                                max_threads: int = 5, job_name: str = None) -> List[str]:
         """
         Retrieves all objects from a Black Pearl bucket.
 
@@ -385,6 +394,8 @@ class Helper(object):
             This determines how many objects to bundle per BP job.
         max_threads : int
             The number of concurrent objects being transferred at once (default 5).
+        job_name : str
+            The name to give the BP get jobs. All BP jobs that are created will have the same name.
         """
         truncated: str = 'true'
         marker = ""
@@ -423,7 +434,8 @@ class Helper(object):
                     get_objects.append(HelperGetObject(object_name=object_name, destination_path=object_destination))
 
             if len(get_objects) > 0:
-                job_id = self.get_objects(get_objects=get_objects, bucket=bucket, max_threads=max_threads)
+                job_id = self.get_objects(get_objects=get_objects, bucket=bucket, max_threads=max_threads,
+                                          job_name=job_name)
                 job_ids.append(job_id)
 
             truncated = list_bucket.result['IsTruncated']
