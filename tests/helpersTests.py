@@ -108,11 +108,12 @@ class Ds3HelpersTestCase(unittest.TestCase):
                                                 include_dirs=False)
 
         # create the BP helper and perform the put all objects call
+        job_name = "python test job"
         client = ds3.createClientFromEnv()
         client.put_bucket_spectra_s3(ds3.PutBucketSpectraS3Request(name=bucket))
 
         helpers = ds3Helpers.Helper(client=client)
-        job_id = helpers.put_objects(bucket=bucket, put_objects=put_objects)
+        job_id = helpers.put_objects(bucket=bucket, put_objects=put_objects, job_name=job_name)
         self.assertNotEqual(job_id, "", "job id was returned")
 
         # verify all the files and directories are on the BP
@@ -122,6 +123,10 @@ class Ds3HelpersTestCase(unittest.TestCase):
         for put_object in put_objects:
             head_obj = client.head_object(ds3.HeadObjectRequest(bucket_name=bucket, object_name=put_object.object_name))
             self.assertNotEqual(head_obj.result, "DOESNTEXIST")
+
+        # verify that the job was created with the desired name
+        get_job = client.get_job_spectra_s3(ds3.GetJobSpectraS3Request(job_id=job_id))
+        self.assertEqual(get_job.result['Name'], job_name)
 
         # retrieve the files from the BP
         destination = tempfile.TemporaryDirectory(prefix="ds3-python3-sdk-dst-")
@@ -134,7 +139,7 @@ class Ds3HelpersTestCase(unittest.TestCase):
             object_name_to_source[put_object.object_name] = put_object.file_path
 
         # perform the get objects call
-        job_id = helpers.get_objects(bucket=bucket, get_objects=get_objects)
+        job_id = helpers.get_objects(bucket=bucket, get_objects=get_objects, job_name=job_name)
         self.assertNotEqual(job_id, "", "job id was returned")
 
         for get_object in get_objects:
@@ -147,6 +152,10 @@ class Ds3HelpersTestCase(unittest.TestCase):
             original_file.close()
             retrieved_file.close()
 
+        # verify that the job was created with the desired name
+        get_job = client.get_job_spectra_s3(ds3.GetJobSpectraS3Request(job_id=job_id))
+        self.assertEqual(get_job.result['Name'], job_name)
+
         # cleanup
         source.cleanup()
         destination.cleanup()
@@ -154,6 +163,7 @@ class Ds3HelpersTestCase(unittest.TestCase):
 
     def test_put_and_get_all_objects_in_directory(self):
         bucket = f'ds3-python3-sdk-test-{uuid.uuid1()}'
+        job_name = "python test job"
 
         # create temporary directory with some files and subdirectories
         source = tempfile.TemporaryDirectory(prefix="ds3-python3-sdk-src-")
@@ -173,7 +183,8 @@ class Ds3HelpersTestCase(unittest.TestCase):
         client.put_bucket(ds3.PutBucketRequest(bucket_name=bucket))
 
         helpers = ds3Helpers.Helper(client=client)
-        job_ids = helpers.put_all_objects_in_directory(source_dir=source.name, bucket=bucket, objects_per_bp_job=10)
+        job_ids = helpers.put_all_objects_in_directory(source_dir=source.name, bucket=bucket, objects_per_bp_job=10,
+                                                       job_name=job_name)
         self.assertGreaterEqual(len(job_ids), 1, "received at least one job id")
 
         # verify all the files and directories are on the BP
@@ -181,11 +192,17 @@ class Ds3HelpersTestCase(unittest.TestCase):
             head_obj = client.head_object(ds3.HeadObjectRequest(bucket_name=bucket, object_name=put_object.object_name))
             self.assertNotEqual(head_obj.result, "DOESNTEXIST")
 
+        # verify that all the job were created with the desired name
+        for job_id in job_ids:
+            get_job = client.get_job_spectra_s3(ds3.GetJobSpectraS3Request(job_id=job_id))
+            self.assertEqual(get_job.result['Name'], job_name)
+
         # retrieve the objects from the BP
         destination = tempfile.TemporaryDirectory(prefix="ds3-python3-sdk-dst-")
         job_ids = helpers.get_all_files_in_bucket(destination_dir=destination.name,
                                                   bucket=bucket,
-                                                  objects_per_bp_job=10)
+                                                  objects_per_bp_job=10,
+                                                  job_name=job_name)
 
         self.assertGreaterEqual(len(job_ids), 2, "multiple job ids returned")
 
@@ -198,6 +215,11 @@ class Ds3HelpersTestCase(unittest.TestCase):
             else:
                 self.assertTrue(os.path.isfile(obj_destination), f'expected path to be file: {obj_destination}')
                 self.assertEqual(put_object.size, os.path.getsize(obj_destination), 'file size')
+
+        # verify that all the job were created with the desired name
+        for job_id in job_ids:
+            get_job = client.get_job_spectra_s3(ds3.GetJobSpectraS3Request(job_id=job_id))
+            self.assertEqual(get_job.result['Name'], job_name)
 
         # cleanup
         source.cleanup()
