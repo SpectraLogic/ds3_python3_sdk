@@ -8,7 +8,7 @@
 #   This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 #   CONDITIONS OF ANY KIND, either express or implied. See the License for the
 #   specific language governing permissions and limitations under the License.
-
+import logging
 import unittest
 import os
 import tempfile
@@ -20,6 +20,8 @@ from ds3 import ds3Helpers
 from typing import List, Dict
 
 import xml.etree.ElementTree as xmlDom
+
+logging.basicConfig(level=logging.INFO)
 
 
 def create_files_in_directory(directory: str, num_files: int, root_dir: str,
@@ -253,7 +255,6 @@ class Ds3HelpersTestCase(unittest.TestCase):
         # fetch existing storage domain
         storage_domain = client.get_storage_domains_spectra_s3(ds3.GetStorageDomainsSpectraS3Request())
         storage_domain_id = storage_domain.result['StorageDomainList'][0]['Id']
-        print("test")
 
         data_persistence_rule = client.put_data_persistence_rule_spectra_s3(
             ds3.PutDataPersistenceRuleSpectraS3Request(data_policy_id=data_policy_id, isolation_level='standard',
