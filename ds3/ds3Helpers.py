@@ -444,7 +444,7 @@ class Helper(object):
         job_name : str
             The name to give the BP get jobs. All BP jobs that are created will have the same name.
         prefix : str
-            Folder path to get contents ("my/folder/") None or empty string to get all.
+            Limits the response to objects that begin with the specified prefix.
         """
         truncated: str = 'true'
         marker = ""
