@@ -420,8 +420,12 @@ class Helper(object):
         stream.close()
         return get_object.object_name, offset
 
-    def get_all_files_in_bucket(self, destination_dir: str, bucket: str, objects_per_bp_job: int = 1000,
-                                max_threads: int = 5, job_name: str = None) -> List[str]:
+    def get_all_files_in_bucket(self, destination_dir: str,
+                                bucket: str,
+                                prefix: str = None,
+                                objects_per_bp_job: int = 1000,
+                                max_threads: int = 5,
+                                job_name: str = None) -> List[str]:
         """
         Retrieves all objects from a Black Pearl bucket.
 
@@ -439,6 +443,8 @@ class Helper(object):
             The number of concurrent objects being transferred at once (default 5).
         job_name : str
             The name to give the BP get jobs. All BP jobs that are created will have the same name.
+        prefix : str
+            Limits the response to objects that begin with the specified prefix.
         """
         truncated: str = 'true'
         marker = ""
@@ -447,6 +453,7 @@ class Helper(object):
             list_bucket = self.client.get_bucket(GetBucketRequest(bucket_name=bucket,
                                                                   max_keys=objects_per_bp_job,
                                                                   versions=False,
+                                                                  prefix=prefix,
                                                                   marker=marker))
 
             get_objects: List[HelperGetObject] = []

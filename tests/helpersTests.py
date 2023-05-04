@@ -163,7 +163,7 @@ class Ds3HelpersTestCase(unittest.TestCase):
         destination.cleanup()
         client.delete_bucket_spectra_s3(ds3.DeleteBucketSpectraS3Request(bucket_name=bucket, force=True))
 
-    def test_put_and_get_all_objects_in_directory(self):
+    def test_put_and_get_all_objects_in_directory(self, prefix_dir: str = ""):
         bucket = f'ds3-python3-sdk-test-{uuid.uuid1()}'
         job_name = "python test job"
 
@@ -201,15 +201,20 @@ class Ds3HelpersTestCase(unittest.TestCase):
 
         # retrieve the objects from the BP
         destination = tempfile.TemporaryDirectory(prefix="ds3-python3-sdk-dst-")
+
+        # retrieve the objects in prefix directory
+        prefixed_objects = [p for p in put_objects if p.object_name.startswith(prefix_dir)]
+
         job_ids = helpers.get_all_files_in_bucket(destination_dir=destination.name,
                                                   bucket=bucket,
-                                                  objects_per_bp_job=10,
-                                                  job_name=job_name)
+                                                  objects_per_bp_job=10, job_name=job_name,
+                                                  prefix=prefix_dir)
 
-        self.assertGreaterEqual(len(job_ids), 2, "multiple job ids returned")
+        if len(prefix_dir) == 0:
+            self.assertGreaterEqual(len(job_ids), 2, "multiple job ids returned")
 
-        # verify all the files and directories were retrieved
-        for put_object in put_objects:
+        # verify all the files in prefix were returned
+        for put_object in prefixed_objects:
             obj_destination = os.path.join(destination.name,
                                            ds3Helpers.object_name_to_file_path(put_object.object_name))
             if put_object.object_name.endswith('/'):
@@ -227,6 +232,12 @@ class Ds3HelpersTestCase(unittest.TestCase):
         source.cleanup()
         destination.cleanup()
         client.delete_bucket_spectra_s3(ds3.DeleteBucketSpectraS3Request(bucket_name=bucket, force=True))
+
+    def test_put_and_get_all_objects_in_directory_with_prefix(self):
+        self.test_put_and_get_all_objects_in_directory(prefix_dir="dir-0/sub-dir-1/")
+
+    def test_put_and_get_all_objects_in_directory_with_bad_prefix(self):
+        self.test_put_and_get_all_objects_in_directory(prefix_dir="not/gonna/match/")
 
     def test_put_all_objects_in_directory_with_md5_checksum(self):
         self.put_all_objects_in_directory_with_checksum(checksum_type='MD5')
