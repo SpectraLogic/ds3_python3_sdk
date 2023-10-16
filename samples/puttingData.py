@@ -69,10 +69,10 @@ while len(chunkIds) > 0:
     for chunk in chunks:
         if not chunk['ChunkId'] in chunkIds:
             continue
-        
+
         chunkIds.remove(chunk['ChunkId'])
         for obj in chunk['ObjectList']:
-            # it is possible that if we start resending a chunk, due to the program crashing, that 
+            # it is possible that if we start resending a chunk, due to the program crashing, that
             # some objects will already be in cache.  Check to make sure that they are not, and then
             # send the object to Spectra S3
             if obj['InCache'] == 'false':

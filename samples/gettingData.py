@@ -80,8 +80,9 @@ while len(chunkIds) > 0:
         # For each blob within this chunk, retrieve the data and land it on the destination.
         for obj in chunk['ObjectList']:
             # Open the destination file and seek to the offset corresponding with this blob.
-            objectStream = open(objectNameToDestinationPathMap[obj['Name']], "wb")
-            objectStream.seek(int(obj['Offset']))
+            fd = os.open(objectNameToDestinationPathMap[obj['Name']], os.O_CREAT | os.O_WRONLY)
+            objectStream = os.fdopen(fd, 'wb')
+            objectStream.seek(int(obj['Offset']), 0)
 
             # Get the blob for the current object and write it to the destination.
             client.get_object(ds3.GetObjectRequest(bucketName,
