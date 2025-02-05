@@ -27,6 +27,9 @@ f = open(tempname, "wb")
 bucketObjects = client.get_service(ds3.GetServiceRequest())
 print(bucketObjects)
 
+# Create a GetObjectRequest and set the range header to retrieve only those bytes.
+# You can specify multiple ranges by separating them with commas. Example:
+#   req.headers['Range'] = 'bytes=0-1,3-4'
 req = ds3.GetObjectRequest(bucketName, fileName, f)
 req.headers['Range'] = 'bytes=53687091100-53687091115'
 start_time = time.time()
