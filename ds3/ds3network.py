@@ -207,7 +207,7 @@ class NetworkClient(object):
             if key == 'Content-Length':
                 # Add to headers,  but not to amz-headers
                 headers[key] = value
-            elif key in ['Content-CRC32', 'Content-CRC32C', 'Content-MD5', 'Content-SHA256', 'Content-SHA512','Range','Content-Length','Accept-Ranges','Content-Range']:
+            elif key in ['Content-CRC32', 'Content-CRC32C', 'Content-MD5', 'Content-SHA256', 'Content-SHA512','Range']:
                 headers[key] = value
                 checksum = value
             elif not key.startswith('x-amz-meta-'):
