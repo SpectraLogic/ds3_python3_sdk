@@ -240,6 +240,7 @@ class Bucket(object):
             'LastPreferredChunkSizeInBytes': None,
             'LogicalUsedCapacity': None,
             'Name': None,
+            'Protected': None,
             'UserId': None
         }
         self.element_lists = {}
@@ -334,10 +335,13 @@ class DataPathBackend(object):
             'IomEnabled': None,
             'LastHeartbeat': None,
             'MaxAggregatedBlobsPerChunk': None,
+            'MaxNumberOfConcurrentJobs': None,
             'PartiallyVerifyLastPercentOfTapes': None,
+            'PoolSafetyEnabled': None,
             'UnavailableMediaPolicy': None,
             'UnavailablePoolMaxJobRetryInMins': None,
-            'UnavailableTapePartitionMaxJobRetryInMins': None
+            'UnavailableTapePartitionMaxJobRetryInMins': None,
+            'VerifyCheckpointBeforeRead': None
         }
         self.element_lists = {}
 
@@ -479,6 +483,7 @@ class ActiveJob(object):
             'Name': None,
             'OriginalSizeInBytes': None,
             'Priority': None,
+            'Protected': None,
             'Rechunked': None,
             'Replicating': None,
             'RequestType': None,
@@ -507,6 +512,20 @@ class JobChunk(object):
             'ReadFromPoolId': None,
             'ReadFromS3TargetId': None,
             'ReadFromTapeId': None
+        }
+        self.element_lists = {}
+
+
+class JobCreationFailed(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'Date': None,
+            'ErrorMessage': None,
+            'Id': None,
+            'TapeBarCodes': None,
+            'Type': None,
+            'UserName': None
         }
         self.element_lists = {}
 
@@ -957,9 +976,11 @@ class CacheFilesystem(object):
             'AutoReclaimInitiateThreshold': None,
             'AutoReclaimTerminateThreshold': None,
             'BurstThreshold': None,
+            'CacheSafetyEnabled': None,
             'Id': None,
             'MaxCapacityInBytes': None,
             'MaxPercentUtilizationOfFilesystem': None,
+            'NeedsReconcile': None,
             'NodeId': None,
             'Path': None
         }
@@ -1066,6 +1087,7 @@ class Tape(object):
             'PartiallyVerifiedEndOfTape': None,
             'PartitionId': None,
             'PreviousState': None,
+            'Role': None,
             'SerialNumber': None,
             'State': None,
             'StorageDomainMemberId': None,
@@ -1567,6 +1589,7 @@ class DetailedTapePartition(object):
         self.elements = {
             'AutoCompactionEnabled': None,
             'AutoQuiesceEnabled': None,
+            'AvailableStorageCapacity': None,
             'DriveIdleTimeoutInMinutes': None,
             'DriveType': None,
             'ErrorMessage': None,
@@ -1578,10 +1601,15 @@ class DetailedTapePartition(object):
             'Name': None,
             'Quiesced': None,
             'SerialNumber': None,
-            'State': None
+            'State': None,
+            'TapeCount': None,
+            'TotalStorageCapacity': None,
+            'UsedStorageCapacity': None
         }
         self.element_lists = {
             ('DriveTypes', None, None),
+            ('TapeStateSummary', 'TapeStateSummaries', TapeStateSummaryApiBean()),
+            ('TapeTypeSummary', 'TapeTypeSummaries', TapeTypeSummaryApiBean()),
             ('TapeTypes', None, None)
         }
 
@@ -1784,6 +1812,43 @@ class S3ObjectToDelete(object):
         self.element_lists = {}
 
 
+class TapeStateSummaryApiBean(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'Count': None,
+            'FullOfData': None,
+            'TapeState': None
+        }
+        self.element_lists = {
+            ('TypeCounts', None, TypeTypeCountApiBean())
+        }
+
+
+class TapeTypeSummaryApiBean(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'AvailableStorageCapacity': None,
+            'Count': None,
+            'TotalStorageCapacity': None,
+            'Type': None,
+            'UsedStorageCapacity': None
+        }
+        self.element_lists = {}
+
+
+class TypeTypeCountApiBean(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'Count': None,
+            'FullOfData': None,
+            'Type': None
+        }
+        self.element_lists = {}
+
+
 class User(object):
     def __init__(self):
         self.attributes = []
@@ -1846,6 +1911,7 @@ class NamedDetailedTapePartition(object):
         self.elements = {
             'AutoCompactionEnabled': None,
             'AutoQuiesceEnabled': None,
+            'AvailableStorageCapacity': None,
             'DriveIdleTimeoutInMinutes': None,
             'DriveType': None,
             'ErrorMessage': None,
@@ -1857,10 +1923,15 @@ class NamedDetailedTapePartition(object):
             'Name': None,
             'Quiesced': None,
             'SerialNumber': None,
-            'State': None
+            'State': None,
+            'TapeCount': None,
+            'TotalStorageCapacity': None,
+            'UsedStorageCapacity': None
         }
         self.element_lists = {
             ('DriveTypes', None, None),
+            ('TapeStateSummary', 'TapeStateSummaries', TapeStateSummaryApiBean()),
+            ('TapeTypeSummary', 'TapeTypeSummaries', TapeTypeSummaryApiBean()),
             ('TapeTypes', None, None)
         }
 
@@ -2070,6 +2141,15 @@ class CompletedJobList(object):
         self.elements = {}
         self.element_lists = {
             ('CompletedJob', None, CompletedJob())
+        }
+
+
+class JobCreationFailedList(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {}
+        self.element_lists = {
+            ('JobCreationFailed', None, JobCreationFailed())
         }
 
 
@@ -2965,13 +3045,15 @@ class GetDataPolicyAclsSpectraS3Request(AbstractRequest):
 
 class PutBucketSpectraS3Request(AbstractRequest):
     
-    def __init__(self, name, data_policy_id=None, id=None, user_id=None):
+    def __init__(self, name, data_policy_id=None, id=None, protected=None, user_id=None):
         super(PutBucketSpectraS3Request, self).__init__()
         self.query_params['name'] = name
         if data_policy_id is not None:
             self.query_params['data_policy_id'] = data_policy_id
         if id is not None:
             self.query_params['id'] = id
+        if protected is not None:
+            self.query_params['protected'] = protected
         if user_id is not None:
             self.query_params['user_id'] = user_id
         self.path = '/_rest_/bucket'
@@ -3022,11 +3104,13 @@ class GetBucketsSpectraS3Request(AbstractRequest):
 
 class ModifyBucketSpectraS3Request(AbstractRequest):
     
-    def __init__(self, bucket_name, data_policy_id=None, user_id=None):
+    def __init__(self, bucket_name, data_policy_id=None, protected=None, user_id=None):
         super(ModifyBucketSpectraS3Request, self).__init__()
         self.bucket_name = bucket_name
         if data_policy_id is not None:
             self.query_params['data_policy_id'] = data_policy_id
+        if protected is not None:
+            self.query_params['protected'] = protected
         if user_id is not None:
             self.query_params['user_id'] = user_id
         self.path = '/_rest_/bucket/' + bucket_name
@@ -3079,7 +3163,7 @@ class GetCacheStateSpectraS3Request(AbstractRequest):
 
 class ModifyCacheFilesystemSpectraS3Request(AbstractRequest):
     
-    def __init__(self, cache_filesystem, auto_reclaim_initiate_threshold=None, auto_reclaim_terminate_threshold=None, burst_threshold=None, max_capacity_in_bytes=None):
+    def __init__(self, cache_filesystem, auto_reclaim_initiate_threshold=None, auto_reclaim_terminate_threshold=None, burst_threshold=None, cache_safety_enabled=None, max_capacity_in_bytes=None, needs_reconcile=None):
         super(ModifyCacheFilesystemSpectraS3Request, self).__init__()
         self.cache_filesystem = cache_filesystem
         if auto_reclaim_initiate_threshold is not None:
@@ -3088,8 +3172,12 @@ class ModifyCacheFilesystemSpectraS3Request(AbstractRequest):
             self.query_params['auto_reclaim_terminate_threshold'] = auto_reclaim_terminate_threshold
         if burst_threshold is not None:
             self.query_params['burst_threshold'] = burst_threshold
+        if cache_safety_enabled is not None:
+            self.query_params['cache_safety_enabled'] = cache_safety_enabled
         if max_capacity_in_bytes is not None:
             self.query_params['max_capacity_in_bytes'] = max_capacity_in_bytes
+        if needs_reconcile is not None:
+            self.query_params['needs_reconcile'] = needs_reconcile
         self.path = '/_rest_/cache_filesystem/' + cache_filesystem
         self.http_verb = HttpVerb.PUT
 
@@ -3171,7 +3259,7 @@ class GetDataPlannerBlobStoreTasksSpectraS3Request(AbstractRequest):
 
 class ModifyDataPathBackendSpectraS3Request(AbstractRequest):
     
-    def __init__(self, activated=None, allow_new_job_requests=None, auto_activate_timeout_in_mins=None, auto_inspect=None, cache_available_retry_after_in_seconds=None, default_verify_data_after_import=None, default_verify_data_prior_to_import=None, iom_cache_limitation_percent=None, iom_enabled=None, max_aggregated_blobs_per_chunk=None, partially_verify_last_percent_of_tapes=None, unavailable_media_policy=None, unavailable_pool_max_job_retry_in_mins=None, unavailable_tape_partition_max_job_retry_in_mins=None):
+    def __init__(self, activated=None, allow_new_job_requests=None, auto_activate_timeout_in_mins=None, auto_inspect=None, cache_available_retry_after_in_seconds=None, default_verify_data_after_import=None, default_verify_data_prior_to_import=None, iom_cache_limitation_percent=None, iom_enabled=None, max_aggregated_blobs_per_chunk=None, max_number_of_concurrent_jobs=None, partially_verify_last_percent_of_tapes=None, pool_safety_enabled=None, unavailable_media_policy=None, unavailable_pool_max_job_retry_in_mins=None, unavailable_tape_partition_max_job_retry_in_mins=None, verify_checkpoint_before_read=None):
         super(ModifyDataPathBackendSpectraS3Request, self).__init__()
         if activated is not None:
             self.query_params['activated'] = activated
@@ -3193,14 +3281,20 @@ class ModifyDataPathBackendSpectraS3Request(AbstractRequest):
             self.query_params['iom_enabled'] = iom_enabled
         if max_aggregated_blobs_per_chunk is not None:
             self.query_params['max_aggregated_blobs_per_chunk'] = max_aggregated_blobs_per_chunk
+        if max_number_of_concurrent_jobs is not None:
+            self.query_params['max_number_of_concurrent_jobs'] = max_number_of_concurrent_jobs
         if partially_verify_last_percent_of_tapes is not None:
             self.query_params['partially_verify_last_percent_of_tapes'] = partially_verify_last_percent_of_tapes
+        if pool_safety_enabled is not None:
+            self.query_params['pool_safety_enabled'] = pool_safety_enabled
         if unavailable_media_policy is not None:
             self.query_params['unavailable_media_policy'] = unavailable_media_policy
         if unavailable_pool_max_job_retry_in_mins is not None:
             self.query_params['unavailable_pool_max_job_retry_in_mins'] = unavailable_pool_max_job_retry_in_mins
         if unavailable_tape_partition_max_job_retry_in_mins is not None:
             self.query_params['unavailable_tape_partition_max_job_retry_in_mins'] = unavailable_tape_partition_max_job_retry_in_mins
+        if verify_checkpoint_before_read is not None:
+            self.query_params['verify_checkpoint_before_read'] = verify_checkpoint_before_read
         self.path = '/_rest_/data_path_backend'
         self.http_verb = HttpVerb.PUT
 
@@ -4303,7 +4397,7 @@ class CloseAggregatingJobSpectraS3Request(AbstractRequest):
 
 class GetBulkJobSpectraS3Request(AbstractRequest):
     
-    def __init__(self, bucket_name, object_list, aggregating=None, chunk_client_processing_order_guarantee=None, implicit_job_id_resolution=None, name=None, priority=None):
+    def __init__(self, bucket_name, object_list, aggregating=None, chunk_client_processing_order_guarantee=None, dead_job_cleanup_allowed=None, implicit_job_id_resolution=None, name=None, priority=None, protected=None):
         super(GetBulkJobSpectraS3Request, self).__init__()
         self.bucket_name = bucket_name
         self.query_params['operation'] = 'start_bulk_get'
@@ -4317,19 +4411,23 @@ class GetBulkJobSpectraS3Request(AbstractRequest):
             self.query_params['aggregating'] = aggregating
         if chunk_client_processing_order_guarantee is not None:
             self.query_params['chunk_client_processing_order_guarantee'] = chunk_client_processing_order_guarantee
+        if dead_job_cleanup_allowed is not None:
+            self.query_params['dead_job_cleanup_allowed'] = dead_job_cleanup_allowed
         if implicit_job_id_resolution is not None:
             self.query_params['implicit_job_id_resolution'] = implicit_job_id_resolution
         if name is not None:
             self.query_params['name'] = name
         if priority is not None:
             self.query_params['priority'] = priority
+        if protected is not None:
+            self.query_params['protected'] = protected
         self.path = '/_rest_/bucket/' + bucket_name
         self.http_verb = HttpVerb.PUT
 
 
 class PutBulkJobSpectraS3Request(AbstractRequest):
     
-    def __init__(self, bucket_name, object_list, aggregating=None, force=None, ignore_naming_conflicts=None, implicit_job_id_resolution=None, max_upload_size=None, minimize_spanning_across_media=None, name=None, pre_allocate_job_space=None, priority=None, verify_after_write=None):
+    def __init__(self, bucket_name, object_list, aggregating=None, dead_job_cleanup_allowed=None, force=None, ignore_naming_conflicts=None, implicit_job_id_resolution=None, max_upload_size=None, minimize_spanning_across_media=None, name=None, pre_allocate_job_space=None, priority=None, protected=None, verify_after_write=None):
         super(PutBulkJobSpectraS3Request, self).__init__()
         self.bucket_name = bucket_name
         self.query_params['operation'] = 'start_bulk_put'
@@ -4341,6 +4439,8 @@ class PutBulkJobSpectraS3Request(AbstractRequest):
 
         if aggregating is not None:
             self.query_params['aggregating'] = aggregating
+        if dead_job_cleanup_allowed is not None:
+            self.query_params['dead_job_cleanup_allowed'] = dead_job_cleanup_allowed
         if force is not None:
             self.query_params['force'] = force
         if ignore_naming_conflicts is not None:
@@ -4357,6 +4457,8 @@ class PutBulkJobSpectraS3Request(AbstractRequest):
             self.query_params['pre_allocate_job_space'] = pre_allocate_job_space
         if priority is not None:
             self.query_params['priority'] = priority
+        if protected is not None:
+            self.query_params['protected'] = protected
         if verify_after_write is not None:
             self.query_params['verify_after_write'] = verify_after_write
         self.path = '/_rest_/bucket/' + bucket_name
@@ -4383,6 +4485,15 @@ class VerifyBulkJobSpectraS3Request(AbstractRequest):
             self.query_params['priority'] = priority
         self.path = '/_rest_/bucket/' + bucket_name
         self.http_verb = HttpVerb.PUT
+
+
+class DeleteJobCreationFailureSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, job_creation_failed):
+        super(DeleteJobCreationFailureSpectraS3Request, self).__init__()
+        self.job_creation_failed = job_creation_failed
+        self.path = '/_rest_/job_creation_failed/' + job_creation_failed
+        self.http_verb = HttpVerb.DELETE
 
 
 class GetActiveJobSpectraS3Request(AbstractRequest):
@@ -4543,6 +4654,28 @@ class GetJobChunksReadyForClientProcessingSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.GET
 
 
+class GetJobCreationFailuresSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, date=None, error_message=None, last_page=None, page_length=None, page_offset=None, page_start_marker=None, user_name=None):
+        super(GetJobCreationFailuresSpectraS3Request, self).__init__()
+        if date is not None:
+            self.query_params['date'] = date
+        if error_message is not None:
+            self.query_params['error_message'] = error_message
+        if last_page is not None:
+            self.query_params['last_page'] = last_page
+        if page_length is not None:
+            self.query_params['page_length'] = page_length
+        if page_offset is not None:
+            self.query_params['page_offset'] = page_offset
+        if page_start_marker is not None:
+            self.query_params['page_start_marker'] = page_start_marker
+        if user_name is not None:
+            self.query_params['user_name'] = user_name
+        self.path = '/_rest_/job_creation_failed'
+        self.http_verb = HttpVerb.GET
+
+
 class GetJobSpectraS3Request(AbstractRequest):
     
     def __init__(self, job_id):
@@ -4576,30 +4709,38 @@ class GetJobsSpectraS3Request(AbstractRequest):
 
 class ModifyActiveJobSpectraS3Request(AbstractRequest):
     
-    def __init__(self, active_job_id, created_at=None, name=None, priority=None):
+    def __init__(self, active_job_id, created_at=None, dead_job_cleanup_allowed=None, name=None, priority=None, protected=None):
         super(ModifyActiveJobSpectraS3Request, self).__init__()
         self.active_job_id = active_job_id
         if created_at is not None:
             self.query_params['created_at'] = created_at
+        if dead_job_cleanup_allowed is not None:
+            self.query_params['dead_job_cleanup_allowed'] = dead_job_cleanup_allowed
         if name is not None:
             self.query_params['name'] = name
         if priority is not None:
             self.query_params['priority'] = priority
+        if protected is not None:
+            self.query_params['protected'] = protected
         self.path = '/_rest_/active_job/' + active_job_id
         self.http_verb = HttpVerb.PUT
 
 
 class ModifyJobSpectraS3Request(AbstractRequest):
     
-    def __init__(self, job_id, created_at=None, name=None, priority=None):
+    def __init__(self, job_id, created_at=None, dead_job_cleanup_allowed=None, name=None, priority=None, protected=None):
         super(ModifyJobSpectraS3Request, self).__init__()
         self.job_id = job_id
         if created_at is not None:
             self.query_params['created_at'] = created_at
+        if dead_job_cleanup_allowed is not None:
+            self.query_params['dead_job_cleanup_allowed'] = dead_job_cleanup_allowed
         if name is not None:
             self.query_params['name'] = name
         if priority is not None:
             self.query_params['priority'] = priority
+        if protected is not None:
+            self.query_params['protected'] = protected
         self.path = '/_rest_/job/' + job_id
         self.http_verb = HttpVerb.PUT
 
@@ -6437,6 +6578,16 @@ class CancelOnlineTapeSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.PUT
 
 
+class CancelTestTapeDriveSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, tape_drive_id):
+        super(CancelTestTapeDriveSpectraS3Request, self).__init__()
+        self.tape_drive_id = tape_drive_id
+        self.query_params['operation'] = 'cancel_test'
+        self.path = '/_rest_/tape_drive/' + tape_drive_id
+        self.http_verb = HttpVerb.PUT
+
+
 class CancelVerifyOnAllTapesSpectraS3Request(AbstractRequest):
     
     def __init__(self):
@@ -6462,6 +6613,16 @@ class CleanTapeDriveSpectraS3Request(AbstractRequest):
         super(CleanTapeDriveSpectraS3Request, self).__init__()
         self.tape_drive_id = tape_drive_id
         self.query_params['operation'] = 'clean'
+        self.path = '/_rest_/tape_drive/' + tape_drive_id
+        self.http_verb = HttpVerb.PUT
+
+
+class PutDriveDumpSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, tape_drive_id):
+        super(PutDriveDumpSpectraS3Request, self).__init__()
+        self.tape_drive_id = tape_drive_id
+        self.query_params['operation'] = 'dump'
         self.path = '/_rest_/tape_drive/' + tape_drive_id
         self.http_verb = HttpVerb.PUT
 
@@ -6877,7 +7038,7 @@ class GetTapeSpectraS3Request(AbstractRequest):
 
 class GetTapesSpectraS3Request(AbstractRequest):
     
-    def __init__(self, assigned_to_storage_domain=None, available_raw_capacity=None, bar_code=None, bucket_id=None, eject_label=None, eject_location=None, full_of_data=None, last_page=None, last_verified=None, page_length=None, page_offset=None, page_start_marker=None, partially_verified_end_of_tape=None, partition_id=None, previous_state=None, serial_number=None, sort_by=None, state=None, storage_domain_member_id=None, type=None, verify_pending=None, write_protected=None):
+    def __init__(self, bucket=None, assigned_to_storage_domain=None, available_raw_capacity=None, bar_code=None, bucket_id=None, eject_label=None, eject_location=None, full_of_data=None, last_page=None, last_verified=None, page_length=None, page_offset=None, page_start_marker=None, partially_verified_end_of_tape=None, partition=None, partition_id=None, previous_state=None, serial_number=None, sort_by=None, state=None, storage_domain=None, storage_domain_member_id=None, type=None, verify_pending=None, write_protected=None):
         super(GetTapesSpectraS3Request, self).__init__()
         if assigned_to_storage_domain is not None:
             self.query_params['assigned_to_storage_domain'] = assigned_to_storage_domain
@@ -6885,6 +7046,8 @@ class GetTapesSpectraS3Request(AbstractRequest):
             self.query_params['available_raw_capacity'] = available_raw_capacity
         if bar_code is not None:
             self.query_params['bar_code'] = bar_code
+        if bucket is not None:
+            self.query_params['bucket'] = bucket
         if bucket_id is not None:
             self.query_params['bucket_id'] = bucket_id
         if eject_label is not None:
@@ -6905,6 +7068,8 @@ class GetTapesSpectraS3Request(AbstractRequest):
             self.query_params['page_start_marker'] = page_start_marker
         if partially_verified_end_of_tape is not None:
             self.query_params['partially_verified_end_of_tape'] = partially_verified_end_of_tape
+        if partition is not None:
+            self.query_params['partition'] = partition
         if partition_id is not None:
             self.query_params['partition_id'] = partition_id
         if previous_state is not None:
@@ -6915,6 +7080,8 @@ class GetTapesSpectraS3Request(AbstractRequest):
             self.query_params['sort_by'] = sort_by
         if state is not None:
             self.query_params['state'] = state
+        if storage_domain is not None:
+            self.query_params['storage_domain'] = storage_domain
         if storage_domain_member_id is not None:
             self.query_params['storage_domain_member_id'] = storage_domain_member_id
         if type is not None:
@@ -7054,13 +7221,15 @@ class ModifyTapePartitionSpectraS3Request(AbstractRequest):
 
 class ModifyTapeSpectraS3Request(AbstractRequest):
     
-    def __init__(self, tape_id, eject_label=None, eject_location=None, state=None):
+    def __init__(self, tape_id, eject_label=None, eject_location=None, role=None, state=None):
         super(ModifyTapeSpectraS3Request, self).__init__()
         self.tape_id = tape_id
         if eject_label is not None:
             self.query_params['eject_label'] = eject_label
         if eject_location is not None:
             self.query_params['eject_location'] = eject_location
+        if role is not None:
+            self.query_params['role'] = role
         if state is not None:
             self.query_params['state'] = state
         self.path = '/_rest_/tape/' + tape_id
@@ -7112,6 +7281,20 @@ class RawImportTapeSpectraS3Request(AbstractRequest):
         if task_priority is not None:
             self.query_params['task_priority'] = task_priority
         self.path = '/_rest_/tape/' + tape_id
+        self.http_verb = HttpVerb.PUT
+
+
+class TestTapeDriveSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, tape_drive_id, skip_clean=None, tape_id=None):
+        super(TestTapeDriveSpectraS3Request, self).__init__()
+        self.tape_drive_id = tape_drive_id
+        self.query_params['operation'] = 'test'
+        if skip_clean is not None:
+            self.query_params['skip_clean'] = skip_clean
+        if tape_id is not None:
+            self.query_params['tape_id'] = tape_id
+        self.path = '/_rest_/tape_drive/' + tape_drive_id
         self.http_verb = HttpVerb.PUT
 
 
@@ -9255,6 +9438,13 @@ class VerifyBulkJobSpectraS3Response(AbstractResponse):
             self.result = parseModel(xmldom.fromstring(response.read()), MasterObjectList())
 
 
+class DeleteJobCreationFailureSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([204])
+        
+
+
 class GetActiveJobSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
@@ -9343,6 +9533,20 @@ class GetJobChunksReadyForClientProcessingSpectraS3Response(AbstractResponse):
         self.__check_status_codes__([200])
         if self.response.status == 200:
             self.result = parseModel(xmldom.fromstring(response.read()), MasterObjectList())
+
+
+class GetJobCreationFailuresSpectraS3Response(AbstractResponse):
+    def __init__(self, response, request):
+        self.paging_truncated = None
+        self.paging_total_result_count = None
+        super(self.__class__, self).__init__(response, request)
+
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), JobCreationFailedList())
+            self.paging_truncated = self.parse_int_header('page-truncated', response.getheaders())
+            self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
 
 
 class GetJobSpectraS3Response(AbstractResponse):
@@ -10597,6 +10801,14 @@ class CancelOnlineTapeSpectraS3Response(AbstractResponse):
             self.result = parseModel(xmldom.fromstring(response.read()), Tape())
 
 
+class CancelTestTapeDriveSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), TapeDrive())
+
+
 class CancelVerifyOnAllTapesSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
@@ -10614,6 +10826,14 @@ class CancelVerifyTapeSpectraS3Response(AbstractResponse):
 
 
 class CleanTapeDriveSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), TapeDrive())
+
+
+class PutDriveDumpSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
         self.__check_status_codes__([200])
@@ -10998,6 +11218,14 @@ class RawImportTapeSpectraS3Response(AbstractResponse):
         self.__check_status_codes__([200])
         if self.response.status == 200:
             self.result = parseModel(xmldom.fromstring(response.read()), Tape())
+
+
+class TestTapeDriveSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), TapeDrive())
 
 
 class VerifyAllTapesSpectraS3Response(AbstractResponse):
@@ -12142,6 +12370,11 @@ class Client(object):
             raise TypeError('request for verify_bulk_job_spectra_s3 should be of type VerifyBulkJobSpectraS3Request but was ' + request.__class__.__name__)
         return VerifyBulkJobSpectraS3Response(self.net_client.get_response(request), request)
     
+    def delete_job_creation_failure_spectra_s3(self, request):
+        if not isinstance(request, DeleteJobCreationFailureSpectraS3Request):
+            raise TypeError('request for delete_job_creation_failure_spectra_s3 should be of type DeleteJobCreationFailureSpectraS3Request but was ' + request.__class__.__name__)
+        return DeleteJobCreationFailureSpectraS3Response(self.net_client.get_response(request), request)
+    
     def get_active_job_spectra_s3(self, request):
         if not isinstance(request, GetActiveJobSpectraS3Request):
             raise TypeError('request for get_active_job_spectra_s3 should be of type GetActiveJobSpectraS3Request but was ' + request.__class__.__name__)
@@ -12186,6 +12419,11 @@ class Client(object):
         if not isinstance(request, GetJobChunksReadyForClientProcessingSpectraS3Request):
             raise TypeError('request for get_job_chunks_ready_for_client_processing_spectra_s3 should be of type GetJobChunksReadyForClientProcessingSpectraS3Request but was ' + request.__class__.__name__)
         return GetJobChunksReadyForClientProcessingSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def get_job_creation_failures_spectra_s3(self, request):
+        if not isinstance(request, GetJobCreationFailuresSpectraS3Request):
+            raise TypeError('request for get_job_creation_failures_spectra_s3 should be of type GetJobCreationFailuresSpectraS3Request but was ' + request.__class__.__name__)
+        return GetJobCreationFailuresSpectraS3Response(self.net_client.get_response(request), request)
     
     def get_job_spectra_s3(self, request):
         if not isinstance(request, GetJobSpectraS3Request):
@@ -12892,6 +13130,11 @@ class Client(object):
             raise TypeError('request for cancel_online_tape_spectra_s3 should be of type CancelOnlineTapeSpectraS3Request but was ' + request.__class__.__name__)
         return CancelOnlineTapeSpectraS3Response(self.net_client.get_response(request), request)
     
+    def cancel_test_tape_drive_spectra_s3(self, request):
+        if not isinstance(request, CancelTestTapeDriveSpectraS3Request):
+            raise TypeError('request for cancel_test_tape_drive_spectra_s3 should be of type CancelTestTapeDriveSpectraS3Request but was ' + request.__class__.__name__)
+        return CancelTestTapeDriveSpectraS3Response(self.net_client.get_response(request), request)
+    
     def cancel_verify_on_all_tapes_spectra_s3(self, request):
         if not isinstance(request, CancelVerifyOnAllTapesSpectraS3Request):
             raise TypeError('request for cancel_verify_on_all_tapes_spectra_s3 should be of type CancelVerifyOnAllTapesSpectraS3Request but was ' + request.__class__.__name__)
@@ -12906,6 +13149,11 @@ class Client(object):
         if not isinstance(request, CleanTapeDriveSpectraS3Request):
             raise TypeError('request for clean_tape_drive_spectra_s3 should be of type CleanTapeDriveSpectraS3Request but was ' + request.__class__.__name__)
         return CleanTapeDriveSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def put_drive_dump_spectra_s3(self, request):
+        if not isinstance(request, PutDriveDumpSpectraS3Request):
+            raise TypeError('request for put_drive_dump_spectra_s3 should be of type PutDriveDumpSpectraS3Request but was ' + request.__class__.__name__)
+        return PutDriveDumpSpectraS3Response(self.net_client.get_response(request), request)
     
     def put_tape_density_directive_spectra_s3(self, request):
         if not isinstance(request, PutTapeDensityDirectiveSpectraS3Request):
@@ -13116,6 +13364,11 @@ class Client(object):
         if not isinstance(request, RawImportTapeSpectraS3Request):
             raise TypeError('request for raw_import_tape_spectra_s3 should be of type RawImportTapeSpectraS3Request but was ' + request.__class__.__name__)
         return RawImportTapeSpectraS3Response(self.net_client.get_response(request), request)
+    
+    def test_tape_drive_spectra_s3(self, request):
+        if not isinstance(request, TestTapeDriveSpectraS3Request):
+            raise TypeError('request for test_tape_drive_spectra_s3 should be of type TestTapeDriveSpectraS3Request but was ' + request.__class__.__name__)
+        return TestTapeDriveSpectraS3Response(self.net_client.get_response(request), request)
     
     def verify_all_tapes_spectra_s3(self, request):
         if not isinstance(request, VerifyAllTapesSpectraS3Request):
