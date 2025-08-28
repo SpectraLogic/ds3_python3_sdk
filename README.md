@@ -1,21 +1,61 @@
-# Spectra S3 Python3 SDK
+# Spectra DS3 Python3 SDK
 [![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/SpectraLogic/ds3_python3_sdk/blob/master/LICENSE.md)
 
-An SDK conforming to the Spectra S3 [specification](https://developer.spectralogic.com/doc/ds3api/1.2/wwhelp/wwhimpl/js/html/wwhelp.htm) for Python 3.11
+An SDK conforming to the Spectra DS3 API [specification](https://developer.spectralogic.com/doc/ds3api/5.4/DS3%20API%20Reference.htm) for Python 3.6+
 
 ## Contact Us
 Join us at our [Google Groups](https://groups.google.com/d/forum/spectralogicds3-sdks) forum to ask questions, or see frequently asked questions.
 
 ## Installing
-To install the ds3_python3_sdk, either clone the latest code, or download a release bundle from [Releases](http://github.com/SpectraLogic/ds3_python3_sdk/releases).  Once the code has been download, cd into the bundle, and install it with `sudo python3 setup.py install`
+To install the Ds3 Python3 SDK, either clone the latest code, or download a release bundle from [Releases](http://github.com/SpectraLogic/ds3_python3_sdk/releases).  Once the code has been download, cd into the bundle.
+Use pip with a virtual environment to build and install the package from the project root (where pyproject.toml is located).
 
-Once `setup.py` completes the ds3_python3_sdk should be installed and available to be imported into python scripts.
+1) Create and activate a virtual environment
+   - Linux/macOS:
+     - `python3 -m venv .venv`
+     - `source .venv/bin/activate`
+   - Windows (PowerShell):
+     - `py -3 -m venv .venv`
+     - `py -3 -m venv .venv`
+     - `..venv\Scripts\Activate.ps1`
+
+
+2) Upgrade pip tooling in the venv
+   - `python -m pip install --upgrade pip setuptools wheel`
+
+
+3) Install from the project root (where pyproject.toml is located)
+   - Regular install:
+     - `python -m pip install .`
+   - Editable (develop) install for local development:
+     - `python -m pip install -e .`
+
+
+4) Verify the installation
+   - `python -c "import ds3; print('ds3 imported OK')"`
+
+
+5) Build a wheel artifact (optional)
+   - Create a distributable wheel in the current directory:
+     - `python -m pip wheel . -w dist`
+   - The built file will appear under dist/, e.g., dist/ds3_sdk-5.8.1-py3-none-any.whl
+
+
+6) Install from the built wheel (optional)
+   - `python -m pip install dist/ds3_sdk-5.8.1-py3-none-any.whl`
+
+
+7) Uninstall (if needed)
+   - `python -m pip uninstall ds3-sdk`
+
+Notes:
+- The distribution name is ds3-sdk, but you import it as ds3 in Python code.
 
 ## Documentation
-The documentation for the SDK can be found at [http://spectralogic.github.io/ds3_python3_sdk/sphinx/v3.4.1/](http://spectralogic.github.io/ds3_python3_sdk/sphinx/v3.4.1/)
+The documentation for the SDK can be found at [http://spectralogic.github.io/ds3_python3_sdk](http://spectralogic.github.io/ds3_python3_sdk)
 
 ## SDK
-The SDK provides an interface for a user to add Spectra S3 functionality to their existing or new python application.  In order to take advantage of the SDK you need to import the `ds3` python package and module.  The following is an example that creates a Spectra S3 client from environment variables, creates a bucket, and lists all the buckets that are visible to the user.
+The SDK provides an interface for a user to add Spectra DS3 functionality to their existing or new python application.  In order to take advantage of the SDK you need to import the `ds3` python package and module.  The following is an example that creates a Spectra DS3 client from environment variables, creates a bucket, and lists all the buckets that are visible to the user.
 
 ```python
 
@@ -71,10 +111,10 @@ to put and get a specific file, but the principle can be expanded to transferrin
 - [An example of getting ONE object in a bucket](samples/getting_one_file_in_directory.py)
 
 ### Moving data the old way
-To put data to a Spectra S3 appliance you have to do it inside the context of what is called a Bulk Job.  Bulk Jobs allow the Spectra S3 appliance to plan how data should land to cache, and subsequently get written/read to/from tape.  The basic flow of every job is:
+To put data to a Spectra DS3 appliance, you have to do it inside the context of what is called a Bulk Job.  Bulk Jobs allow the Spectra DS3 appliance to plan how data should land to cache, and subsequently get written/read to/from tape.  The basic flow of every job is:
 
-* Generate the list of objects that will either be sent to or retrieved from Spectra S3
-* Send a bulk put/get to Spectra S3 to plan the job
+* Generate the list of objects that will either be sent to or retrieved from Spectra DS3
+* Send a bulk put/get to Spectra DS3 to plan the job
 * The job will be split into multiple chunks.  An application must then get the available list of chunks that can be processed
 * For each chunk that can be processed, sent the object (this step can be done in parallel)
 * Repeat getting the list of available chunks until all chunks have been processed
@@ -90,4 +130,4 @@ Update the version of the SDK before creating a new release. The format is `<maj
 `<major>.<minor>` numbers must match the version of BP. The `<patch>` is an incrementing number that increments with 
 each SDK release for a given major/minor release.
 
-The release number is specified in `setup.py`.
+The release number is specified in `pyproject.toml`.
