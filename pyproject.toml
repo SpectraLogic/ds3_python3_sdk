@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ds3-sdk"
+version = "5.8.1"
+description = "Python3 SDK for Spectra DS3"
+readme = "README.md"
+requires-python = ">=3.6"
+license = { text = "Apache License 2.0" }
+authors = [
+  { name = "Spectra Logic Corporation", email = "developer@spectralogic.com" }
+]
+urls = { Homepage = "https://github.com/SpectraLogic/ds3_python3_sdk" }
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["ds3*"]
+
+[tool.setuptools]
+license-files = ["LICENSE.md"]
