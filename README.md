@@ -11,12 +11,12 @@ The Python documentation is on the branch gh-pages (Github hosted sites need to 
 so any changes to the documentation need to be on this branch, not master). Pull from this branch, and you should see an
 a directory called sphinx in the repository. This directory is where all the documentation actually lives.
 
-Sphinx generates it's documentation from installed modules, so before generating documentation,
+Sphinx generates its documentation from installed modules, so before generating documentation,
 make sure the ds3.ds3 Python module is installed.
 
-To install the ds3.ds3 module, run
+Follow the installation steps in the main [README.mod](https://github.com/SpectraLogic/ds3_python3_sdk/blob/master/README.md#installing)
+to install the ds3.ds3 module.
 
-    $ sudo python setup.py install
     
 Generating documentation
 ------------------------
@@ -31,7 +31,9 @@ Adding a new version or release
 -------------------------------
 
 To add a new version of the documentation, navigate to the sphinx directory and copy one of the existing directories into
-a new directory corresponding to the version and release you want. In the new directory, edit the variables 'source' and
-'release' in the file <new directory>/source/conf.py to match the new version and release numbers. Run
+a new directory corresponding to the version and release you want. In the new directory, edit the variables `source` and
+`release` in the file `<new directory>/source/conf.py` to match the new version and release numbers. Run
 
     $ sphinx-build -b html source/ .
+
+Update the link in the main index.html file to point to the new version folder.
