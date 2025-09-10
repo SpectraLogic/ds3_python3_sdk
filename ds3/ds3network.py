@@ -19,6 +19,7 @@ import xml.dom.minidom
 from email.utils import formatdate
 from hashlib import sha1
 from xml.dom.minidom import Node
+from contextlib import contextmanager
 
 
 def typeCheckString(input_arg):
@@ -169,6 +170,11 @@ class NetworkClient(object):
 
         # if needed, loop to handle 307 redirects
         while response.status == 307 and retrycnt < self.maxredirects:
+            # CLOSE the previous response to avoid socket leaks before retrying
+            try:
+                response.close()
+            except Exception:
+                pass
             retrycnt += 1
             response = self.send_request(request)
 
@@ -181,6 +187,12 @@ class NetworkClient(object):
 
     def send_request(self, request):
         """create http or https connection and send the DS3 request. Set the proxy if one is specified"""
+        connection, response = self._send_request_with_connection(request)
+        # Preserve existing behavior: return the response, but note that the caller must close it.
+        return response
+
+    def _send_request_with_connection(self, request):
+        """Internal helper: returns (connection, response) so callers can manage both."""
         connection = None
         if self.proxy:
             connection = self.setup_connection(self.proxy)
@@ -232,7 +244,45 @@ class NetworkClient(object):
                                                                 resource=canonicalized_resource)
             connection.request(request.http_verb, path, headers=headers)
 
-        return connection.getresponse()
+        response = connection.getresponse()
+        return connection, response
+
+    @contextmanager
+    def open_response(self, request):
+        """
+        Context manager that handles redirects and guarantees sockets are closed.
+        Usage:
+            with client.network.open_response(req) as resp:
+                data = resp.read()
+        """
+        retrycnt = 0
+        conn, resp = self._send_request_with_connection(request)
+        try:
+            # Handle 307 redirects, closing previous response each retry
+            while resp.status == 307 and retrycnt < self.maxredirects:
+                try:
+                    resp.close()
+                except Exception:
+                    pass
+                retrycnt += 1
+                # Close previous connection; a new one will be created for the retry
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                conn, resp = self._send_request_with_connection(request)
+            yield resp
+        finally:
+            # Ensure both response and connection are closed no matter what
+            try:
+                resp.close()
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 
     def canonicalize_header_value(self, value):
         # if a header value is a list, then it is converted into a comma separated list
