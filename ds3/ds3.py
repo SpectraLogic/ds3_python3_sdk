@@ -11850,7 +11850,7 @@ class Client(object):
         if not isinstance(request, GetObjectRequest):
             raise TypeError('request for get_object should be of type GetObjectRequest but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
-            return GetObjectResponse(resp, request)
+            return GetObjectResponse(resp, request, buffer_size)
     
     def head_bucket(self, request):
         if not isinstance(request, HeadBucketRequest):
