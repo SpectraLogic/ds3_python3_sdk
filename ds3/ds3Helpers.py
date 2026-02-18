@@ -133,6 +133,30 @@ def done_callback(future: concurrent.futures.Future):
         logging.error(f'{ex}')
 
 
+class AggregateTransferException(Exception):
+    def __init__(self, job_id: str, exceptions: List[BaseException]):
+        self.job_id = job_id
+        self.exceptions = exceptions
+        super().__init__(f"Job {self.job_id} failed with {len(self.exceptions)} exceptions: {self.exceptions}")
+
+
+class PutBlobException(Exception):
+    def __init__(self, object_name: str, offest: int, length: int, e: BaseException):
+        self.object_name = object_name
+        self.offset = offest
+        self.length = length
+        self.e = e
+        super().__init__(f"Failed to put blob object_name={object_name}, offset={offest}, length={length}: {e}")
+
+
+class GetBlobException(Exception):
+    def __init__(self, object_name: str, offest: int, e: BaseException):
+        self.object_name = object_name
+        self.offset = offest
+        self.e = e
+        super().__init__(f"Failed to get blob object_name={object_name}, offset={offest}: {e}")
+
+
 class Helper(object):
     """A class that moves data to and from a Black Pearl"""
 
@@ -159,7 +183,7 @@ class Helper(object):
         return policy_response.result['ChecksumType']
 
     def put_objects(self, put_objects: List[HelperPutObject], bucket: str, max_threads: int = 5,
-                    calculate_checksum: bool = False, job_name: str = None) -> str:
+                    calculate_checksum: bool = False, job_name: str = None, fail_fast: bool = True) -> str:
         """
         Puts a list of objects to a Black Pearl bucket.
 
@@ -179,6 +203,10 @@ class Helper(object):
             type of checksum calculated is determined by the data policy associated with the bucket.
         job_name : str
             The name to give the BP put job.
+        fail_fast : bool
+            Behavior when an exception is thrown while transferring data. True means the first encountered exception
+            will stop all progress on the job. False results in the best effort strategy where all blobs that can be
+            sent are. An aggregate exception will be raised containing all exceptions.
         """
         # If calculating checksum, then determine the checksum type from the data policy
         checksum_type = None
@@ -207,7 +235,7 @@ class Helper(object):
                 blob_set.add(cur_blob)
 
         # send until all blobs have been transferred
-        error_count: int = 0
+        exception_list = []
         while len(blob_set) > 0:
             available_chunks = self.client.get_job_chunks_ready_for_client_processing_spectra_s3(
                 GetJobChunksReadyForClientProcessingSpectraS3Request(job_id))
@@ -238,13 +266,32 @@ class Helper(object):
                             futures.append(future)
 
             # Wait for all futures to finish
-            concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
-            for future in futures:
-                if future.exception() is not None:
-                    error_count += 1
+            failure_strategy=concurrent.futures.ALL_COMPLETED
+            if fail_fast:
+                failure_strategy=concurrent.futures.FIRST_EXCEPTION
 
-        if error_count > 0:
-            logging.warning(f'Completed job {job_id} with {error_count} errors.')
+            done, not_done = concurrent.futures.wait(futures, return_when=failure_strategy)
+            for future in done:
+                e = future.exception()
+                if e is not None:
+                    exception_list.append(e)
+
+            if len(not_done) > 0:
+                logging.warning(f"Job {job_id} canceling {len(not_done)} outstanding put object calls")
+                for future in not_done:
+                    future.cancel()
+
+            concurrent.futures.wait(not_done)
+
+            if fail_fast and len(exception_list) > 0:
+                e = AggregateTransferException(job_id, exception_list)
+                logging.error(e)
+                raise e
+
+        if len(exception_list) > 0:
+            e = AggregateTransferException(job_id, exception_list)
+            logging.error(e)
+            raise e
         else:
             logging.info(f'Completed job {job_id} with no errors.')
 
@@ -252,24 +299,28 @@ class Helper(object):
 
     def put_blob(self, bucket: str, put_object: HelperPutObject, length: int, offset: int, job_id: str,
                  checksum_type: str = None):
-        headers = None
-        if checksum_type is not None:
-            checksum_stream = put_object.get_data_stream(offset=offset)
-            headers = calculate_checksum_header(object_data_stream=checksum_stream,
-                                                checksum_type=checksum_type,
-                                                length=length)
-            checksum_stream.close()
+        try:
+            headers = None
+            if checksum_type is not None:
+                checksum_stream = put_object.get_data_stream(offset=offset)
+                headers = calculate_checksum_header(object_data_stream=checksum_stream,
+                                                    checksum_type=checksum_type,
+                                                    length=length)
+                checksum_stream.close()
 
-        stream = put_object.get_data_stream(offset)
-        self.client.put_object(PutObjectRequest(bucket_name=bucket,
-                                                object_name=put_object.object_name,
-                                                length=length,
-                                                stream=stream,
-                                                offset=offset,
-                                                job=job_id,
-                                                headers=headers))
-        stream.close()
-        return put_object.object_name, offset
+            stream = put_object.get_data_stream(offset)
+            self.client.put_object(PutObjectRequest(bucket_name=bucket,
+                                                    object_name=put_object.object_name,
+                                                    length=length,
+                                                    stream=stream,
+                                                    offset=offset,
+                                                    job=job_id,
+                                                    headers=headers))
+            stream.close()
+            return put_object.object_name, offset
+
+        except Exception as e:
+            raise PutBlobException(object_name=put_object.object_name, offest=offset, length=length, e=e)
 
     def put_all_objects_in_directory(self, source_dir: str, bucket: str, objects_per_bp_job: int = 1000,
                                      max_threads: int = 5, calculate_checksum: bool = False,
@@ -329,7 +380,7 @@ class Helper(object):
         return job_list
 
     def get_objects(self, get_objects: List[HelperGetObject], bucket: str, max_threads: int = 5,
-                    job_name: str = None) -> str:
+                    job_name: str = None, fail_fast: bool = True) -> str:
         """
         Retrieves a list of objects from a Black Pearl bucket.
 
@@ -343,6 +394,10 @@ class Helper(object):
             The number of concurrent objects being transferred at once (default 5).
         job_name : str
             The name to give the BP get job.
+        fail_fast : bool
+            Behavior when an exception is thrown while transferring data. True means the first encountered exception
+            will stop all progress on the job. False results in the best effort strategy where all blobs that can be
+            retrieved are retrieved. An aggregate exception will be raised containing all exceptions.
         """
         ds3_get_objects: List[Ds3GetObject] = []
         get_objects_map: Dict[str, HelperGetObject] = dict()
@@ -367,7 +422,7 @@ class Helper(object):
                 blob_set.add(cur_blob)
 
         # retrieve until all blobs have been transferred
-        error_count: int = 0
+        exception_list = []
         while len(blob_set) > 0:
             available_chunks = self.client.get_job_chunks_ready_for_client_processing_spectra_s3(
                 GetJobChunksReadyForClientProcessingSpectraS3Request(job_id))
@@ -397,28 +452,51 @@ class Helper(object):
                             futures.append(future)
 
             # Wait for all futures to finish
-            concurrent.futures.wait(futures, return_when=concurrent.futures.ALL_COMPLETED)
-            for future in futures:
-                if future.exception() is not None:
-                    error_count += 1
+            failure_strategy=concurrent.futures.ALL_COMPLETED
+            if fail_fast:
+                failure_strategy=concurrent.futures.FIRST_EXCEPTION
 
-        if error_count > 0:
-            logging.warning(f'Completed job {job_id} with {error_count} errors.')
+            done, not_done = concurrent.futures.wait(futures, return_when=failure_strategy)
+            for future in done:
+                e = future.exception()
+                if e is not None:
+                    exception_list.append(e)
+
+            if len(not_done) > 0:
+                logging.warning(f"Job {job_id} canceling {len(not_done)} outstanding get object calls")
+                for future in not_done:
+                    future.cancel()
+
+            concurrent.futures.wait(not_done)
+
+            if fail_fast and len(exception_list) > 0:
+                e = AggregateTransferException(job_id, exception_list)
+                logging.error(e)
+                raise e
+
+        if len(exception_list) > 0:
+            e = AggregateTransferException(job_id, exception_list)
+            logging.error(e)
+            raise e
         else:
             logging.info(f'Completed job {job_id} with no errors.')
 
         return job_id
 
     def get_blob(self, bucket: str, get_object: HelperGetObject, offset: int, job_id: str):
-        stream = get_object.get_data_stream(offset)
-        self.client.get_object(GetObjectRequest(bucket_name=bucket,
-                                                object_name=get_object.object_name,
-                                                stream=stream,
-                                                offset=offset,
-                                                job=job_id,
-                                                version_id=get_object.version_id))
-        stream.close()
-        return get_object.object_name, offset
+        try:
+            stream = get_object.get_data_stream(offset)
+            self.client.get_object(GetObjectRequest(bucket_name=bucket,
+                                                    object_name=get_object.object_name,
+                                                    stream=stream,
+                                                    offset=offset,
+                                                    job=job_id,
+                                                    version_id=get_object.version_id))
+            stream.close()
+            return get_object.object_name, offset
+
+        except Exception as e:
+            raise GetBlobException(object_name=get_object.object_name, offest=offset, e=e)
 
     def get_all_files_in_bucket(self, destination_dir: str,
                                 bucket: str,
