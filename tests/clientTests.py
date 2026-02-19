@@ -669,21 +669,21 @@ class ObjectTestCase(Ds3TestCase):
         
         objects = [Ds3GetObject(str(obj['Key'])) for obj in bucketContents.result['ContentsList']]
         bulkGetResult = self.client.get_bulk_job_spectra_s3(GetBulkJobSpectraS3Request(bucketName, objects))
-        
-        availableChunks = self.client.get_job_chunk_spectra_s3(GetJobChunkSpectraS3Request(bulkGetResult.result['JobId']))
-        
-        for obj in availableChunks.result['ObjectList']:
-            fd, tempName = tempfile.mkstemp()
-            f = open(tempName, "wb")
 
-            metadata_resp = self.client.get_object(GetObjectRequest(bucketName, obj['Name'], f, offset = int(obj['Offset']), job = bulkGetResult.result['JobId']))
-            
-            f.close()
-            os.close(fd)
-            os.remove(tempName)
+        availableChunks = self.client.get_job_chunks_ready_for_client_processing_spectra_s3(GetJobChunksReadyForClientProcessingSpectraS3Request(job=bulkGetResult.result['JobId']))
+        for chunk in availableChunks.result['ObjectsList']:
+            for obj in chunk['ObjectList']:
+                fd, tempName = tempfile.mkstemp()
+                f = open(tempName, "wb")
 
-        #jobStatusResponse = self.client.getJob(bulkGetResult.jobId)
-        #self.assertEqual(jobStatusResponse.status, LibDs3JobStatus.COMPLETED)
+                metadata_resp = self.client.get_object(GetObjectRequest(bucketName, obj['Name'], f, offset = int(obj['Offset']), job = bulkGetResult.result['JobId']))
+
+                f.close()
+                os.close(fd)
+                os.remove(tempName)
+
+        jobStatusResponse = self.client.get_job_spectra_s3(GetJobSpectraS3Request(job_id=bulkGetResult.result['JobId']))
+        self.assertEqual(jobStatusResponse.result['Status'], 'COMPLETED')
         
     def testGetObjectsWithFullDetails(self):
         populateTestData(self.client, bucketName, self.getDataPolicyId())
