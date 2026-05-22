@@ -259,6 +259,20 @@ class BucketAcl(object):
         self.element_lists = {}
 
 
+class CacheThrottleRule(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'BucketId': None,
+            'BurstThreshold': None,
+            'Id': None,
+            'MaxCachePercent': None,
+            'Priority': None,
+            'RequestType': None
+        }
+        self.element_lists = {}
+
+
 class CanceledJob(object):
     def __init__(self):
         self.attributes = []
@@ -324,6 +338,7 @@ class DataPathBackend(object):
         self.elements = {
             'Activated': None,
             'AllowNewJobRequests': None,
+            'AlwaysRollback': None,
             'AutoActivateTimeoutInMins': None,
             'AutoInspect': None,
             'CacheAvailableRetryAfterInSeconds': None,
@@ -478,6 +493,7 @@ class ActiveJob(object):
             'ErrorMessage': None,
             'Id': None,
             'ImplicitJobIdResolution': None,
+            'Restore': None,
             'MinimizeSpanningAcrossMedia': None,
             'Naked': None,
             'Name': None,
@@ -487,31 +503,10 @@ class ActiveJob(object):
             'Rechunked': None,
             'Replicating': None,
             'RequestType': None,
-            'Restore': None,
             'Truncated': None,
             'TruncatedDueToTimeout': None,
             'UserId': None,
             'VerifyAfterWrite': None
-        }
-        self.element_lists = {}
-
-
-class JobChunk(object):
-    def __init__(self):
-        self.attributes = []
-        self.elements = {
-            'BlobStoreState': None,
-            'ChunkNumber': None,
-            'Id': None,
-            'JobCreationDate': None,
-            'JobId': None,
-            'NodeId': None,
-            'PendingTargetCommit': None,
-            'ReadFromAzureTargetId': None,
-            'ReadFromDs3TargetId': None,
-            'ReadFromPoolId': None,
-            'ReadFromS3TargetId': None,
-            'ReadFromTapeId': None
         }
         self.element_lists = {}
 
@@ -526,6 +521,27 @@ class JobCreationFailed(object):
             'TapeBarCodes': None,
             'Type': None,
             'UserName': None
+        }
+        self.element_lists = {}
+
+
+class JobEntry(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'BlobId': None,
+            'BlobStoreState': None,
+            'ChunkId': None,
+            'ChunkNumber': None,
+            'Id': None,
+            'JobId': None,
+            'NodeId': None,
+            'PendingTargetCommit': None,
+            'ReadFromAzureTargetId': None,
+            'ReadFromDs3TargetId': None,
+            'ReadFromPoolId': None,
+            'ReadFromS3TargetId': None,
+            'ReadFromTapeId': None
         }
         self.element_lists = {}
 
@@ -1069,10 +1085,12 @@ class Tape(object):
     def __init__(self):
         self.attributes = []
         self.elements = {
+            'AllowRollback': None,
             'AssignedToStorageDomain': None,
             'AvailableRawCapacity': None,
             'BarCode': None,
             'BucketId': None,
+            'CharacterizationVer': None,
             'DescriptionForIdentification': None,
             'EjectDate': None,
             'EjectLabel': None,
@@ -1116,6 +1134,7 @@ class TapeDrive(object):
     def __init__(self):
         self.attributes = []
         self.elements = {
+            'CharacterizationVer': None,
             'CleaningRequired': None,
             'ErrorMessage': None,
             'ForceTapeRemoval': None,
@@ -1451,6 +1470,8 @@ class BlobStoreTaskInformation(object):
             'DateStarted': None,
             'Description': None,
             'DriveId': None,
+            'DurationInProgress': Duration(),
+            'DurationScheduled': Duration(),
             'Id': None,
             'Name': None,
             'PoolId': None,
@@ -1460,7 +1481,9 @@ class BlobStoreTaskInformation(object):
             'TargetId': None,
             'TargetType': None
         }
-        self.element_lists = {}
+        self.element_lists = {
+            ('JobIds', 'JobId', None)
+        }
 
 
 class BlobStoreTasksInformation(object):
@@ -1508,6 +1531,21 @@ class CacheInformation(object):
         }
 
 
+class AbmConfigApiBean(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'Message': None
+        }
+        self.element_lists = {
+            ('DataPolicy', 'DataPoliciesThatHaveBuckets', DataPolicyApiBean()),
+            ('PoolPartition', 'PoolPartitions', PoolPartitionApiBean()),
+            ('StorageDomain', 'StorageDomains', StorageDomainApiBean()),
+            ('TapePartition', 'TapePartitions', TapePartitionApiBean()),
+            ('Target', 'Targets', TargetApiBean())
+        }
+
+
 class BucketDetails(object):
     def __init__(self):
         self.attributes = []
@@ -1549,14 +1587,62 @@ class ListAllMyBucketsResult(object):
         }
 
 
-class CompleteMultipartUploadResult(object):
+class DataPersistenceRuleApiBean(object):
     def __init__(self):
-        self.attributes = []
+        self.attributes = [
+            'StorageDomainName'
+        ]
         self.elements = {
-            'Bucket': None,
-            'ETag': None,
-            'Key': None,
-            'Location': None
+            'Id': None,
+            'IsolationLevel': None,
+            'MinimumDaysToRetain': None,
+            'State': None,
+            'StorageDomainId': None,
+            'Type': None
+        }
+        self.element_lists = {}
+
+
+class DataPolicyApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'Name'
+        ]
+        self.elements = {
+            'AlwaysForcePutJobCreation': None,
+            'AlwaysMinimizeSpanningAcrossMedia': None,
+            'BlobbingEnabled': None,
+            'ChecksumType': None,
+            'CreationDate': None,
+            'DefaultBlobSize': None,
+            'DefaultGetJobPriority': None,
+            'DefaultPutJobPriority': None,
+            'DefaultVerifyAfterWrite': None,
+            'DefaultVerifyJobPriority': None,
+            'EndToEndCrcRequired': None,
+            'Id': None,
+            'MaxVersionsToKeep': None,
+            'RebuildPriority': None,
+            'Versioning': None
+        }
+        self.element_lists = {
+            ('Bucket', 'Buckets', HumanReadableBucketApiBean()),
+            ('DataPersistenceRule', 'LocalCopies', DataPersistenceRuleApiBean()),
+            ('DataReplicationRule', 'RemoteCopies', DataReplicationRuleApiBean())
+        }
+
+
+class DataReplicationRuleApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'TargetName'
+        ]
+        self.elements = {
+            'Id': None,
+            'ReplicateDeletes': None,
+            'State': None,
+            'TargetId': None,
+            'Type': None
         }
         self.element_lists = {}
 
@@ -1580,6 +1666,19 @@ class DeleteResult(object):
         self.element_lists = {
             ('Deleted', None, S3ObjectToDelete()),
             ('Error', None, DeleteObjectError())
+        }
+
+
+class DestinationSummary(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'Id': None,
+            'Name': None
+        }
+        self.element_lists = {
+            ('JobChunk', 'Complete', Objects()),
+            ('JobChunk', 'Incomplete', Objects())
         }
 
 
@@ -1614,6 +1713,26 @@ class DetailedTapePartition(object):
         }
 
 
+class JobChunk(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'BlobStoreState': None,
+            'ChunkNumber': None,
+            'Id': None,
+            'JobCreationDate': None,
+            'JobId': None,
+            'NodeId': None,
+            'PendingTargetCommit': None,
+            'ReadFromAzureTargetId': None,
+            'ReadFromDs3TargetId': None,
+            'ReadFromPoolId': None,
+            'ReadFromS3TargetId': None,
+            'ReadFromTapeId': None
+        }
+        self.element_lists = {}
+
+
 class Error(object):
     def __init__(self):
         self.attributes = []
@@ -1627,13 +1746,13 @@ class Error(object):
         self.element_lists = {}
 
 
-class InitiateMultipartUploadResult(object):
+class HumanReadableBucketApiBean(object):
     def __init__(self):
-        self.attributes = []
+        self.attributes = [
+            'Name'
+        ]
         self.elements = {
-            'Bucket': None,
-            'Key': None,
-            'UploadId': None
+            'CreationDate': None
         }
         self.element_lists = {}
 
@@ -1677,6 +1796,35 @@ class Objects(object):
         }
 
 
+class JobSummaryApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'Aggregating',
+            'BucketName',
+            'CachedSizeInBytes',
+            'ChunkClientProcessingOrderGuarantee',
+            'CompletedSizeInBytes',
+            'EntirelyInCache',
+            'JobId',
+            'Naked',
+            'Name',
+            'OriginalSizeInBytes',
+            'Priority',
+            'RequestType',
+            'StartDate',
+            'Status',
+            'UserId',
+            'UserName'
+        ]
+        self.elements = {
+            'Summary': None
+        }
+        self.element_lists = {
+            ('Destination', 'Destinations', DestinationSummary()),
+            ('Node', 'Nodes', JobNode())
+        }
+
+
 class MasterObjectList(object):
     def __init__(self):
         self.attributes = [
@@ -1713,67 +1861,6 @@ class JobList(object):
         }
 
 
-class ListPartsResult(object):
-    def __init__(self):
-        self.attributes = []
-        self.elements = {
-            'Bucket': None,
-            'Key': None,
-            'MaxParts': None,
-            'NextPartNumberMarker': None,
-            'Owner': User(),
-            'PartNumberMarker': None,
-            'IsTruncated': None,
-            'UploadId': None
-        }
-        self.element_lists = {
-            ('Part', None, MultiPartUploadPart())
-        }
-
-
-class ListMultiPartUploadsResult(object):
-    def __init__(self):
-        self.attributes = []
-        self.elements = {
-            'Bucket': None,
-            'Delimiter': None,
-            'KeyMarker': None,
-            'MaxUploads': None,
-            'NextKeyMarker': None,
-            'NextUploadIdMarker': None,
-            'Prefix': None,
-            'IsTruncated': None,
-            'UploadIdMarker': None
-        }
-        self.element_lists = {
-            ('CommonPrefixes', None, CommonPrefixes()),
-            ('Upload', None, MultiPartUpload())
-        }
-
-
-class MultiPartUpload(object):
-    def __init__(self):
-        self.attributes = []
-        self.elements = {
-            'Initiated': None,
-            'Key': None,
-            'Owner': User(),
-            'UploadId': None
-        }
-        self.element_lists = {}
-
-
-class MultiPartUploadPart(object):
-    def __init__(self):
-        self.attributes = []
-        self.elements = {
-            'ETag': None,
-            'LastModified': None,
-            'PartNumber': None
-        }
-        self.element_lists = {}
-
-
 class JobNode(object):
     def __init__(self):
         self.attributes = [
@@ -1783,6 +1870,19 @@ class JobNode(object):
             'Id'
         ]
         self.elements = {}
+        self.element_lists = {}
+
+
+class PoolPartitionApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'Name'
+        ]
+        self.elements = {
+            'Id': None,
+            'PoolCount': None,
+            'Type': None
+        }
         self.element_lists = {}
 
 
@@ -1812,6 +1912,73 @@ class S3ObjectToDelete(object):
         self.element_lists = {}
 
 
+class StorageDomainApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'Name'
+        ]
+        self.elements = {
+            'AutoEjectMediaFullThreshold': None,
+            'AutoEjectUponCron': None,
+            'AutoEjectUponJobCancellation': None,
+            'AutoEjectUponJobCompletion': None,
+            'AutoEjectUponMediaFull': None,
+            'Id': None,
+            'LtfsFileNaming': None,
+            'MaxTapeFragmentationPercent': None,
+            'MaximumAutoVerificationFrequencyInDays': None,
+            'MediaEjectionAllowed': None,
+            'SecureMediaAllocation': None,
+            'VerifyPriorToAutoEject': None,
+            'WriteOptimization': None
+        }
+        self.element_lists = {
+            ('StorageDomainMember', 'StorageDomainMembers', StorageDomainMemberApiBean())
+        }
+
+
+class StorageDomainMemberApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'PartitionName',
+            'TapeType'
+        ]
+        self.elements = {
+            'AutoCompactionThreshold': None,
+            'Id': None,
+            'PoolPartitionId': None,
+            'State': None,
+            'TapePartitionId': None,
+            'WritePreference': None
+        }
+        self.element_lists = {}
+
+
+class TapePartitionApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'Name'
+        ]
+        self.elements = {
+            'AutoCompactionEnabled': None,
+            'AutoQuiesceEnabled': None,
+            'DriveCount': None,
+            'DriveIdleTimeoutInMinutes': None,
+            'DriveType': None,
+            'ErrorMessage': None,
+            'Id': None,
+            'ImportExportConfiguration': None,
+            'LibraryId': None,
+            'MinimumReadReservedDrives': None,
+            'MinimumWriteReservedDrives': None,
+            'Quiesced': None,
+            'SerialNumber': None,
+            'State': None,
+            'TapeCount': None
+        }
+        self.element_lists = {}
+
+
 class TapeStateSummaryApiBean(object):
     def __init__(self):
         self.attributes = []
@@ -1834,6 +2001,22 @@ class TapeTypeSummaryApiBean(object):
             'TotalStorageCapacity': None,
             'Type': None,
             'UsedStorageCapacity': None
+        }
+        self.element_lists = {}
+
+
+class TargetApiBean(object):
+    def __init__(self):
+        self.attributes = [
+            'Name'
+        ]
+        self.elements = {
+            'CloudNamingMode': None,
+            'DefaultReadPreference': None,
+            'Id': None,
+            'PermitGoingOutOfSync': None,
+            'Quiesced': None,
+            'State': None
         }
         self.element_lists = {}
 
@@ -1955,6 +2138,19 @@ class TapeFailureList(object):
         }
 
 
+class Duration(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {
+            'ElapsedHours': None,
+            'ElapsedMillis': None,
+            'ElapsedMinutes': None,
+            'ElapsedNanos': None,
+            'ElapsedSeconds': None
+        }
+        self.element_lists = {}
+
+
 class BucketAclList(object):
     def __init__(self):
         self.attributes = []
@@ -1988,6 +2184,15 @@ class CacheFilesystemList(object):
         self.elements = {}
         self.element_lists = {
             ('CacheFilesystem', None, CacheFilesystem())
+        }
+
+
+class CacheThrottleRuleList(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {}
+        self.element_lists = {
+            ('CacheThrottleRule', None, CacheThrottleRule())
         }
 
 
@@ -2150,6 +2355,15 @@ class JobCreationFailedList(object):
         self.elements = {}
         self.element_lists = {
             ('JobCreationFailed', None, JobCreationFailed())
+        }
+
+
+class JobEntryList(object):
+    def __init__(self):
+        self.attributes = []
+        self.elements = {}
+        self.element_lists = {
+            ('JobEntry', None, JobEntry())
         }
 
 
@@ -2641,17 +2855,6 @@ class AbstractRequest(object, metaclass=ABCMeta):
         self.body = None
 
 
-class AbortMultiPartUploadRequest(AbstractRequest):
-    
-    def __init__(self, bucket_name, object_name, upload_id):
-        super(AbortMultiPartUploadRequest, self).__init__()
-        self.bucket_name = bucket_name
-        self.object_name = object_name
-        self.query_params['upload_id'] = upload_id
-        self.path = '/' + bucket_name + '/' + object_name
-        self.http_verb = HttpVerb.DELETE
-
-
 class CompleteBlobRequest(AbstractRequest):
     
     def __init__(self, bucket_name, object_name, blob, job, size=None):
@@ -2666,43 +2869,12 @@ class CompleteBlobRequest(AbstractRequest):
         self.http_verb = HttpVerb.POST
 
 
-class CompleteMultiPartUploadRequest(AbstractRequest):
-    
-    def __init__(self, bucket_name, object_name, part_list, upload_id):
-        super(CompleteMultiPartUploadRequest, self).__init__()
-        self.bucket_name = bucket_name
-        self.object_name = object_name
-        self.query_params['upload_id'] = upload_id
-        if part_list is not None:
-            if not (isinstance(cur_obj, Part) for cur_obj in part_list):
-                raise TypeError('CompleteMultiPartUploadRequest should have request payload of type: list of Part')
-            xml_object_list = PartList(part_list)
-            self.body = xmldom.tostring(xml_object_list.to_xml())
-
-        self.path = '/' + bucket_name + '/' + object_name
-        self.http_verb = HttpVerb.POST
-
-
 class PutBucketRequest(AbstractRequest):
     
     def __init__(self, bucket_name):
         super(PutBucketRequest, self).__init__()
         self.bucket_name = bucket_name
         self.path = '/' + bucket_name
-        self.http_verb = HttpVerb.PUT
-
-
-class PutMultiPartUploadPartRequest(AbstractRequest):
-    
-    def __init__(self, bucket_name, object_name, part_number, request_payload, upload_id):
-        super(PutMultiPartUploadPartRequest, self).__init__()
-        self.bucket_name = bucket_name
-        self.object_name = object_name
-        self.query_params['part_number'] = part_number
-        self.query_params['upload_id'] = upload_id
-        self.body = request_payload
-
-        self.path = '/' + bucket_name + '/' + object_name
         self.http_verb = HttpVerb.PUT
 
 
@@ -2833,52 +3005,6 @@ class HeadObjectRequest(AbstractRequest):
             self.query_params['version_id'] = version_id
         self.path = '/' + bucket_name + '/' + object_name
         self.http_verb = HttpVerb.HEAD
-
-
-class InitiateMultiPartUploadRequest(AbstractRequest):
-    
-    def __init__(self, bucket_name, object_name):
-        super(InitiateMultiPartUploadRequest, self).__init__()
-        self.bucket_name = bucket_name
-        self.object_name = object_name
-        self.query_params['uploads'] = None
-        self.path = '/' + bucket_name + '/' + object_name
-        self.http_verb = HttpVerb.POST
-
-
-class ListMultiPartUploadPartsRequest(AbstractRequest):
-    
-    def __init__(self, bucket_name, object_name, upload_id, max_parts=None, part_number_marker=None):
-        super(ListMultiPartUploadPartsRequest, self).__init__()
-        self.bucket_name = bucket_name
-        self.object_name = object_name
-        self.query_params['upload_id'] = upload_id
-        if max_parts is not None:
-            self.query_params['max_parts'] = max_parts
-        if part_number_marker is not None:
-            self.query_params['part_number_marker'] = part_number_marker
-        self.path = '/' + bucket_name + '/' + object_name
-        self.http_verb = HttpVerb.GET
-
-
-class ListMultiPartUploadsRequest(AbstractRequest):
-    
-    def __init__(self, bucket_name, delimiter=None, key_marker=None, max_uploads=None, prefix=None, upload_id_marker=None):
-        super(ListMultiPartUploadsRequest, self).__init__()
-        self.bucket_name = bucket_name
-        self.query_params['uploads'] = None
-        if delimiter is not None:
-            self.query_params['delimiter'] = delimiter
-        if key_marker is not None:
-            self.query_params['key_marker'] = key_marker
-        if max_uploads is not None:
-            self.query_params['max_uploads'] = max_uploads
-        if prefix is not None:
-            self.query_params['prefix'] = prefix
-        if upload_id_marker is not None:
-            self.query_params['upload_id_marker'] = upload_id_marker
-        self.path = '/' + bucket_name
-        self.http_verb = HttpVerb.GET
 
 
 class PutBucketAclForGroupSpectraS3Request(AbstractRequest):
@@ -3117,6 +3243,32 @@ class ModifyBucketSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.PUT
 
 
+class PutCacheThrottleRuleSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, max_cache_percent, bucket_id=None, burst_threshold=None, priority=None, request_type=None):
+        super(PutCacheThrottleRuleSpectraS3Request, self).__init__()
+        self.query_params['max_cache_percent'] = max_cache_percent
+        if bucket_id is not None:
+            self.query_params['bucket_id'] = bucket_id
+        if burst_threshold is not None:
+            self.query_params['burst_threshold'] = burst_threshold
+        if priority is not None:
+            self.query_params['priority'] = priority
+        if request_type is not None:
+            self.query_params['request_type'] = request_type
+        self.path = '/_rest_/cache_throttle_rule'
+        self.http_verb = HttpVerb.POST
+
+
+class DeleteCacheThrottleRuleSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, cache_throttle_rule):
+        super(DeleteCacheThrottleRuleSpectraS3Request, self).__init__()
+        self.cache_throttle_rule = cache_throttle_rule
+        self.path = '/_rest_/cache_throttle_rule/' + cache_throttle_rule
+        self.http_verb = HttpVerb.DELETE
+
+
 class ForceFullCacheReclaimSpectraS3Request(AbstractRequest):
     
     def __init__(self):
@@ -3161,6 +3313,41 @@ class GetCacheStateSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.GET
 
 
+class GetCacheThrottleRuleSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, cache_throttle_rule):
+        super(GetCacheThrottleRuleSpectraS3Request, self).__init__()
+        self.cache_throttle_rule = cache_throttle_rule
+        self.path = '/_rest_/cache_throttle_rule/' + cache_throttle_rule
+        self.http_verb = HttpVerb.GET
+
+
+class GetCacheThrottleRulesSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, bucket_id=None, burst_threshold=None, last_page=None, max_cache_percent=None, page_length=None, page_offset=None, page_start_marker=None, priority=None, request_type=None):
+        super(GetCacheThrottleRulesSpectraS3Request, self).__init__()
+        if bucket_id is not None:
+            self.query_params['bucket_id'] = bucket_id
+        if burst_threshold is not None:
+            self.query_params['burst_threshold'] = burst_threshold
+        if last_page is not None:
+            self.query_params['last_page'] = last_page
+        if max_cache_percent is not None:
+            self.query_params['max_cache_percent'] = max_cache_percent
+        if page_length is not None:
+            self.query_params['page_length'] = page_length
+        if page_offset is not None:
+            self.query_params['page_offset'] = page_offset
+        if page_start_marker is not None:
+            self.query_params['page_start_marker'] = page_start_marker
+        if priority is not None:
+            self.query_params['priority'] = priority
+        if request_type is not None:
+            self.query_params['request_type'] = request_type
+        self.path = '/_rest_/cache_throttle_rule'
+        self.http_verb = HttpVerb.GET
+
+
 class ModifyCacheFilesystemSpectraS3Request(AbstractRequest):
     
     def __init__(self, cache_filesystem, auto_reclaim_initiate_threshold=None, auto_reclaim_terminate_threshold=None, burst_threshold=None, cache_safety_enabled=None, max_capacity_in_bytes=None, needs_reconcile=None):
@@ -3179,6 +3366,25 @@ class ModifyCacheFilesystemSpectraS3Request(AbstractRequest):
         if needs_reconcile is not None:
             self.query_params['needs_reconcile'] = needs_reconcile
         self.path = '/_rest_/cache_filesystem/' + cache_filesystem
+        self.http_verb = HttpVerb.PUT
+
+
+class ModifyCacheThrottleRuleSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, cache_throttle_rule, bucket_id=None, burst_threshold=None, max_cache_percent=None, priority=None, request_type=None):
+        super(ModifyCacheThrottleRuleSpectraS3Request, self).__init__()
+        self.cache_throttle_rule = cache_throttle_rule
+        if bucket_id is not None:
+            self.query_params['bucket_id'] = bucket_id
+        if burst_threshold is not None:
+            self.query_params['burst_threshold'] = burst_threshold
+        if max_cache_percent is not None:
+            self.query_params['max_cache_percent'] = max_cache_percent
+        if priority is not None:
+            self.query_params['priority'] = priority
+        if request_type is not None:
+            self.query_params['request_type'] = request_type
+        self.path = '/_rest_/cache_throttle_rule/' + cache_throttle_rule
         self.http_verb = HttpVerb.PUT
 
 
@@ -3249,22 +3455,26 @@ class GetDataPathBackendSpectraS3Request(AbstractRequest):
 
 class GetDataPlannerBlobStoreTasksSpectraS3Request(AbstractRequest):
     
-    def __init__(self, full_details=None):
+    def __init__(self, full_details=None, job=None):
         super(GetDataPlannerBlobStoreTasksSpectraS3Request, self).__init__()
         if full_details is not None:
             self.query_params['full_details'] = full_details
+        if job is not None:
+            self.query_params['job'] = job
         self.path = '/_rest_/blob_store_task'
         self.http_verb = HttpVerb.GET
 
 
 class ModifyDataPathBackendSpectraS3Request(AbstractRequest):
     
-    def __init__(self, activated=None, allow_new_job_requests=None, auto_activate_timeout_in_mins=None, auto_inspect=None, cache_available_retry_after_in_seconds=None, default_verify_data_after_import=None, default_verify_data_prior_to_import=None, iom_cache_limitation_percent=None, iom_enabled=None, max_aggregated_blobs_per_chunk=None, max_number_of_concurrent_jobs=None, partially_verify_last_percent_of_tapes=None, pool_safety_enabled=None, unavailable_media_policy=None, unavailable_pool_max_job_retry_in_mins=None, unavailable_tape_partition_max_job_retry_in_mins=None, verify_checkpoint_before_read=None):
+    def __init__(self, activated=None, allow_new_job_requests=None, always_rollback=None, auto_activate_timeout_in_mins=None, auto_inspect=None, cache_available_retry_after_in_seconds=None, default_verify_data_after_import=None, default_verify_data_prior_to_import=None, iom_cache_limitation_percent=None, iom_enabled=None, max_aggregated_blobs_per_chunk=None, max_number_of_concurrent_jobs=None, partially_verify_last_percent_of_tapes=None, pool_safety_enabled=None, unavailable_media_policy=None, unavailable_pool_max_job_retry_in_mins=None, unavailable_tape_partition_max_job_retry_in_mins=None, verify_checkpoint_before_read=None):
         super(ModifyDataPathBackendSpectraS3Request, self).__init__()
         if activated is not None:
             self.query_params['activated'] = activated
         if allow_new_job_requests is not None:
             self.query_params['allow_new_job_requests'] = allow_new_job_requests
+        if always_rollback is not None:
+            self.query_params['always_rollback'] = always_rollback
         if auto_activate_timeout_in_mins is not None:
             self.query_params['auto_activate_timeout_in_mins'] = auto_activate_timeout_in_mins
         if auto_inspect is not None:
@@ -4676,11 +4886,38 @@ class GetJobCreationFailuresSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.GET
 
 
+class GetJobEntriesSpectraS3Request(AbstractRequest):
+    
+    def __init__(self, job_id, last_page=None, page_length=None, page_offset=None, page_start_marker=None):
+        super(GetJobEntriesSpectraS3Request, self).__init__()
+        self.query_params['job_id'] = job_id
+        if last_page is not None:
+            self.query_params['last_page'] = last_page
+        if page_length is not None:
+            self.query_params['page_length'] = page_length
+        if page_offset is not None:
+            self.query_params['page_offset'] = page_offset
+        if page_start_marker is not None:
+            self.query_params['page_start_marker'] = page_start_marker
+        self.path = '/_rest_/job_chunk_dao'
+        self.http_verb = HttpVerb.GET
+
+
 class GetJobSpectraS3Request(AbstractRequest):
     
     def __init__(self, job_id):
         super(GetJobSpectraS3Request, self).__init__()
         self.job_id = job_id
+        self.path = '/_rest_/job/' + job_id
+        self.http_verb = HttpVerb.GET
+
+
+class GetJobSummarySpectraS3Request(AbstractRequest):
+    
+    def __init__(self, job_id):
+        super(GetJobSummarySpectraS3Request, self).__init__()
+        self.job_id = job_id
+        self.query_params['summary'] = None
         self.path = '/_rest_/job/' + job_id
         self.http_verb = HttpVerb.GET
 
@@ -6436,6 +6673,14 @@ class ForceFeatureKeyValidationSpectraS3Request(AbstractRequest):
         self.http_verb = HttpVerb.PUT
 
 
+class GetAbmConfigSpectraS3Request(AbstractRequest):
+    
+    def __init__(self):
+        super(GetAbmConfigSpectraS3Request, self).__init__()
+        self.path = '/_rest_/abm_config'
+        self.http_verb = HttpVerb.GET
+
+
 class GetFeatureKeysSpectraS3Request(AbstractRequest):
     
     def __init__(self, error_message=None, expiration_date=None, key=None, last_page=None, page_length=None, page_offset=None, page_start_marker=None):
@@ -6767,9 +7012,11 @@ class ForceTapeEnvironmentRefreshSpectraS3Request(AbstractRequest):
 
 class FormatAllTapesSpectraS3Request(AbstractRequest):
     
-    def __init__(self, force=None):
+    def __init__(self, characterize=None, force=None):
         super(FormatAllTapesSpectraS3Request, self).__init__()
         self.query_params['operation'] = 'format'
+        if characterize is not None:
+            self.query_params['characterize'] = characterize
         if force is not None:
             self.query_params['force'] = force
         self.path = '/_rest_/tape'
@@ -6778,10 +7025,12 @@ class FormatAllTapesSpectraS3Request(AbstractRequest):
 
 class FormatTapeSpectraS3Request(AbstractRequest):
     
-    def __init__(self, tape_id, force=None):
+    def __init__(self, tape_id, characterize=None, force=None):
         super(FormatTapeSpectraS3Request, self).__init__()
         self.tape_id = tape_id
         self.query_params['operation'] = 'format'
+        if characterize is not None:
+            self.query_params['characterize'] = characterize
         if force is not None:
             self.query_params['force'] = force
         self.path = '/_rest_/tape/' + tape_id
@@ -7221,9 +7470,11 @@ class ModifyTapePartitionSpectraS3Request(AbstractRequest):
 
 class ModifyTapeSpectraS3Request(AbstractRequest):
     
-    def __init__(self, tape_id, eject_label=None, eject_location=None, role=None, state=None):
+    def __init__(self, tape_id, allow_rollback=None, eject_label=None, eject_location=None, role=None, state=None):
         super(ModifyTapeSpectraS3Request, self).__init__()
         self.tape_id = tape_id
+        if allow_rollback is not None:
+            self.query_params['allow_rollback'] = allow_rollback
         if eject_label is not None:
             self.query_params['eject_label'] = eject_label
         if eject_location is not None:
@@ -8323,13 +8574,6 @@ class AbstractResponse(object, metaclass=ABCMeta):
                 return int(header[1])
         return None
 
-class AbortMultiPartUploadResponse(AbstractResponse):
-    
-    def process_response(self, response):
-        self.__check_status_codes__([204])
-        
-
-
 class CompleteBlobResponse(AbstractResponse):
     
     def process_response(self, response):
@@ -8337,22 +8581,7 @@ class CompleteBlobResponse(AbstractResponse):
         
 
 
-class CompleteMultiPartUploadResponse(AbstractResponse):
-    
-    def process_response(self, response):
-        self.__check_status_codes__([200])
-        if self.response.status == 200:
-            self.result = parseModel(xmldom.fromstring(response.read()), CompleteMultipartUploadResult())
-
-
 class PutBucketResponse(AbstractResponse):
-    
-    def process_response(self, response):
-        self.__check_status_codes__([200])
-        
-
-
-class PutMultiPartUploadPartResponse(AbstractResponse):
     
     def process_response(self, response):
         self.__check_status_codes__([200])
@@ -8487,30 +8716,6 @@ class HeadObjectResponse(AbstractResponse):
             self.result = HeadRequestStatus.DOESNTEXIST
         else:
             self.result = HeadRequestStatus.UNKNOWN
-
-
-class InitiateMultiPartUploadResponse(AbstractResponse):
-    
-    def process_response(self, response):
-        self.__check_status_codes__([200])
-        if self.response.status == 200:
-            self.result = parseModel(xmldom.fromstring(response.read()), InitiateMultipartUploadResult())
-
-
-class ListMultiPartUploadPartsResponse(AbstractResponse):
-    
-    def process_response(self, response):
-        self.__check_status_codes__([200])
-        if self.response.status == 200:
-            self.result = parseModel(xmldom.fromstring(response.read()), ListPartsResult())
-
-
-class ListMultiPartUploadsResponse(AbstractResponse):
-    
-    def process_response(self, response):
-        self.__check_status_codes__([200])
-        if self.response.status == 200:
-            self.result = parseModel(xmldom.fromstring(response.read()), ListMultiPartUploadsResult())
 
 
 class PutBucketAclForGroupSpectraS3Response(AbstractResponse):
@@ -8680,6 +8885,21 @@ class ModifyBucketSpectraS3Response(AbstractResponse):
             self.result = parseModel(xmldom.fromstring(response.read()), Bucket())
 
 
+class PutCacheThrottleRuleSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([201])
+        if self.response.status == 201:
+            self.result = parseModel(xmldom.fromstring(response.read()), CacheThrottleRule())
+
+
+class DeleteCacheThrottleRuleSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([204])
+        
+
+
 class ForceFullCacheReclaimSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
@@ -8717,12 +8937,42 @@ class GetCacheStateSpectraS3Response(AbstractResponse):
             self.result = parseModel(xmldom.fromstring(response.read()), CacheInformation())
 
 
+class GetCacheThrottleRuleSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), CacheThrottleRule())
+
+
+class GetCacheThrottleRulesSpectraS3Response(AbstractResponse):
+    def __init__(self, response, request):
+        self.paging_truncated = None
+        self.paging_total_result_count = None
+        super(self.__class__, self).__init__(response, request)
+
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), CacheThrottleRuleList())
+            self.paging_truncated = self.parse_int_header('page-truncated', response.getheaders())
+            self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
+
+
 class ModifyCacheFilesystemSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
         self.__check_status_codes__([200])
         if self.response.status == 200:
             self.result = parseModel(xmldom.fromstring(response.read()), CacheFilesystem())
+
+
+class ModifyCacheThrottleRuleSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), CacheThrottleRule())
 
 
 class GetBucketCapacitySummarySpectraS3Response(AbstractResponse):
@@ -9549,12 +9799,34 @@ class GetJobCreationFailuresSpectraS3Response(AbstractResponse):
             self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
 
 
+class GetJobEntriesSpectraS3Response(AbstractResponse):
+    def __init__(self, response, request):
+        self.paging_truncated = None
+        self.paging_total_result_count = None
+        super(self.__class__, self).__init__(response, request)
+
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), JobEntryList())
+            self.paging_truncated = self.parse_int_header('page-truncated', response.getheaders())
+            self.paging_total_result_count = self.parse_int_header('total-result-count', response.getheaders())
+
+
 class GetJobSpectraS3Response(AbstractResponse):
     
     def process_response(self, response):
         self.__check_status_codes__([200])
         if self.response.status == 200:
             self.result = parseModel(xmldom.fromstring(response.read()), MasterObjectList())
+
+
+class GetJobSummarySpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), JobSummaryApiBean())
 
 
 class GetJobToReplicateSpectraS3Response(AbstractResponse):
@@ -10685,6 +10957,14 @@ class ForceFeatureKeyValidationSpectraS3Response(AbstractResponse):
         
 
 
+class GetAbmConfigSpectraS3Response(AbstractResponse):
+    
+    def process_response(self, response):
+        self.__check_status_codes__([200])
+        if self.response.status == 200:
+            self.result = parseModel(xmldom.fromstring(response.read()), AbmConfigApiBean())
+
+
 class GetFeatureKeysSpectraS3Response(AbstractResponse):
     def __init__(self, response, request):
         self.paging_truncated = None
@@ -11780,35 +12060,17 @@ class Client(object):
         return self.net_client
 
     
-    def abort_multi_part_upload(self, request):
-        if not isinstance(request, AbortMultiPartUploadRequest):
-            raise TypeError('request for abort_multi_part_upload should be of type AbortMultiPartUploadRequest but was ' + request.__class__.__name__)
-        with self.net_client.open_response(request) as resp:
-            return AbortMultiPartUploadResponse(resp, request)
-    
     def complete_blob(self, request):
         if not isinstance(request, CompleteBlobRequest):
             raise TypeError('request for complete_blob should be of type CompleteBlobRequest but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
             return CompleteBlobResponse(resp, request)
     
-    def complete_multi_part_upload(self, request):
-        if not isinstance(request, CompleteMultiPartUploadRequest):
-            raise TypeError('request for complete_multi_part_upload should be of type CompleteMultiPartUploadRequest but was ' + request.__class__.__name__)
-        with self.net_client.open_response(request) as resp:
-            return CompleteMultiPartUploadResponse(resp, request)
-    
     def put_bucket(self, request):
         if not isinstance(request, PutBucketRequest):
             raise TypeError('request for put_bucket should be of type PutBucketRequest but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
             return PutBucketResponse(resp, request)
-    
-    def put_multi_part_upload_part(self, request):
-        if not isinstance(request, PutMultiPartUploadPartRequest):
-            raise TypeError('request for put_multi_part_upload_part should be of type PutMultiPartUploadPartRequest but was ' + request.__class__.__name__)
-        with self.net_client.open_response(request) as resp:
-            return PutMultiPartUploadPartResponse(resp, request)
     
     def put_object(self, request):
         if not isinstance(request, PutObjectRequest):
@@ -11863,24 +12125,6 @@ class Client(object):
             raise TypeError('request for head_object should be of type HeadObjectRequest but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
             return HeadObjectResponse(resp, request)
-    
-    def initiate_multi_part_upload(self, request):
-        if not isinstance(request, InitiateMultiPartUploadRequest):
-            raise TypeError('request for initiate_multi_part_upload should be of type InitiateMultiPartUploadRequest but was ' + request.__class__.__name__)
-        with self.net_client.open_response(request) as resp:
-            return InitiateMultiPartUploadResponse(resp, request)
-    
-    def list_multi_part_upload_parts(self, request):
-        if not isinstance(request, ListMultiPartUploadPartsRequest):
-            raise TypeError('request for list_multi_part_upload_parts should be of type ListMultiPartUploadPartsRequest but was ' + request.__class__.__name__)
-        with self.net_client.open_response(request) as resp:
-            return ListMultiPartUploadPartsResponse(resp, request)
-    
-    def list_multi_part_uploads(self, request):
-        if not isinstance(request, ListMultiPartUploadsRequest):
-            raise TypeError('request for list_multi_part_uploads should be of type ListMultiPartUploadsRequest but was ' + request.__class__.__name__)
-        with self.net_client.open_response(request) as resp:
-            return ListMultiPartUploadsResponse(resp, request)
     
     def put_bucket_acl_for_group_spectra_s3(self, request):
         if not isinstance(request, PutBucketAclForGroupSpectraS3Request):
@@ -11996,6 +12240,18 @@ class Client(object):
         with self.net_client.open_response(request) as resp:
             return ModifyBucketSpectraS3Response(resp, request)
     
+    def put_cache_throttle_rule_spectra_s3(self, request):
+        if not isinstance(request, PutCacheThrottleRuleSpectraS3Request):
+            raise TypeError('request for put_cache_throttle_rule_spectra_s3 should be of type PutCacheThrottleRuleSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return PutCacheThrottleRuleSpectraS3Response(resp, request)
+    
+    def delete_cache_throttle_rule_spectra_s3(self, request):
+        if not isinstance(request, DeleteCacheThrottleRuleSpectraS3Request):
+            raise TypeError('request for delete_cache_throttle_rule_spectra_s3 should be of type DeleteCacheThrottleRuleSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return DeleteCacheThrottleRuleSpectraS3Response(resp, request)
+    
     def force_full_cache_reclaim_spectra_s3(self, request):
         if not isinstance(request, ForceFullCacheReclaimSpectraS3Request):
             raise TypeError('request for force_full_cache_reclaim_spectra_s3 should be of type ForceFullCacheReclaimSpectraS3Request but was ' + request.__class__.__name__)
@@ -12020,11 +12276,29 @@ class Client(object):
         with self.net_client.open_response(request) as resp:
             return GetCacheStateSpectraS3Response(resp, request)
     
+    def get_cache_throttle_rule_spectra_s3(self, request):
+        if not isinstance(request, GetCacheThrottleRuleSpectraS3Request):
+            raise TypeError('request for get_cache_throttle_rule_spectra_s3 should be of type GetCacheThrottleRuleSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return GetCacheThrottleRuleSpectraS3Response(resp, request)
+    
+    def get_cache_throttle_rules_spectra_s3(self, request):
+        if not isinstance(request, GetCacheThrottleRulesSpectraS3Request):
+            raise TypeError('request for get_cache_throttle_rules_spectra_s3 should be of type GetCacheThrottleRulesSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return GetCacheThrottleRulesSpectraS3Response(resp, request)
+    
     def modify_cache_filesystem_spectra_s3(self, request):
         if not isinstance(request, ModifyCacheFilesystemSpectraS3Request):
             raise TypeError('request for modify_cache_filesystem_spectra_s3 should be of type ModifyCacheFilesystemSpectraS3Request but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
             return ModifyCacheFilesystemSpectraS3Response(resp, request)
+    
+    def modify_cache_throttle_rule_spectra_s3(self, request):
+        if not isinstance(request, ModifyCacheThrottleRuleSpectraS3Request):
+            raise TypeError('request for modify_cache_throttle_rule_spectra_s3 should be of type ModifyCacheThrottleRuleSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return ModifyCacheThrottleRuleSpectraS3Response(resp, request)
     
     def get_bucket_capacity_summary_spectra_s3(self, request):
         if not isinstance(request, GetBucketCapacitySummarySpectraS3Request):
@@ -12554,11 +12828,23 @@ class Client(object):
         with self.net_client.open_response(request) as resp:
             return GetJobCreationFailuresSpectraS3Response(resp, request)
     
+    def get_job_entries_spectra_s3(self, request):
+        if not isinstance(request, GetJobEntriesSpectraS3Request):
+            raise TypeError('request for get_job_entries_spectra_s3 should be of type GetJobEntriesSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return GetJobEntriesSpectraS3Response(resp, request)
+    
     def get_job_spectra_s3(self, request):
         if not isinstance(request, GetJobSpectraS3Request):
             raise TypeError('request for get_job_spectra_s3 should be of type GetJobSpectraS3Request but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
             return GetJobSpectraS3Response(resp, request)
+    
+    def get_job_summary_spectra_s3(self, request):
+        if not isinstance(request, GetJobSummarySpectraS3Request):
+            raise TypeError('request for get_job_summary_spectra_s3 should be of type GetJobSummarySpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return GetJobSummarySpectraS3Response(resp, request)
     
     def get_job_to_replicate_spectra_s3(self, request):
         if not isinstance(request, GetJobToReplicateSpectraS3Request):
@@ -13321,6 +13607,12 @@ class Client(object):
             raise TypeError('request for force_feature_key_validation_spectra_s3 should be of type ForceFeatureKeyValidationSpectraS3Request but was ' + request.__class__.__name__)
         with self.net_client.open_response(request) as resp:
             return ForceFeatureKeyValidationSpectraS3Response(resp, request)
+    
+    def get_abm_config_spectra_s3(self, request):
+        if not isinstance(request, GetAbmConfigSpectraS3Request):
+            raise TypeError('request for get_abm_config_spectra_s3 should be of type GetAbmConfigSpectraS3Request but was ' + request.__class__.__name__)
+        with self.net_client.open_response(request) as resp:
+            return GetAbmConfigSpectraS3Response(resp, request)
     
     def get_feature_keys_spectra_s3(self, request):
         if not isinstance(request, GetFeatureKeysSpectraS3Request):
